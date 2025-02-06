@@ -22,13 +22,13 @@ class WalletConnector {
         }
 
         if (typeof window.ethereum !== 'undefined') {
-            window.ethereum.on('accountsChanged', (accounts) => {
+            window.ethereum.on('accountsChanged', async (accounts) => {
                 if (accounts.length === 0) {
                     this.signOut();
                 } else {
                     this.account = accounts[0];
                     SessionManager.setWalletAddress(this.account);
-                    this.loadProfileData();
+                    await this.loadProfileData();
                 }
             });
         }
@@ -72,27 +72,19 @@ class WalletConnector {
 
                 SessionManager.setWalletAddress(this.account);
 
-                let profile = JSON.parse(localStorage.getItem(`profile_${this.account}`));
-                if (!profile) {
-                    profile = {
-                        address: this.account,
-                        username: `User_${this.account.substring(2, 8)}`,
-                        bio: 'New to Slacker',
-                        profilePicture: null,
-                        bannerPicture: null
-                    };
-                    localStorage.setItem(`profile_${this.account}`, JSON.stringify(profile));
+                try {
+                    await this.createOrLoadProfile();
+                    document.getElementById('walletLogin').style.display = 'none';
+                    document.getElementById('profileContent').style.display = 'block';
+                    document.getElementById('signOutButton').style.display = 'block';
+                } catch (error) {
+                    console.error('Error handling profile:', error);
+                    ErrorHandler.showError('Failed to load profile', document.getElementById('profileContent'));
                 }
-
-                document.getElementById('walletLogin').style.display = 'none';
-                document.getElementById('profileContent').style.display = 'block';
-                document.getElementById('signOutButton').style.display = 'block';
-                
-                await this.loadProfileData();
 
             } catch (error) {
                 console.error("MetaMask connection error:", error);
-                alert(`Error connecting to MetaMask: ${error.message}`);
+                ErrorHandler.showError('Failed to connect to MetaMask', document.getElementById('walletLogin'));
             }
         } else {
             alert('Please install MetaMask to continue!');
@@ -100,30 +92,43 @@ class WalletConnector {
         }
     }
 
-    signOut() {
-        if (confirm('Are you sure you want to sign out?')) {
-            SessionManager.clearSession();
-            window.location.reload();
+    async createOrLoadProfile() {
+        const defaultProfile = {
+            walletAddress: this.account,
+            username: `User_${this.account.substring(2, 8)}`,
+            bio: 'New to Slacker'
+        };
+
+        try {
+            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
+            await this.loadProfileData();
+        } catch (error) {
+            if (error.message.includes('User not found')) {
+                await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                    method: 'POST',
+                    body: JSON.stringify(defaultProfile)
+                });
+                await this.loadProfileData();
+            } else {
+                throw error;
+            }
         }
     }
 
     async loadProfileData() {
         console.log('Loading profile data...');
-        const profile = JSON.parse(localStorage.getItem(`profile_${this.account}`));
-        if (profile) {
-            console.log('Profile found:', profile);
-            console.log('Creating PostHandler instance...');
+        try {
+            const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
+            console.log('Profile data loaded:', profile);
             
-            // Verify PostHandler exists
             if (typeof PostHandler === 'undefined') {
-                console.error('PostHandler is not defined! Check if postHandler.js is loaded correctly.');
+                console.error('PostHandler is not defined!');
                 return;
             }
 
             const postHandler = new PostHandler(this.account);
-            console.log('PostHandler instance created:', postHandler);
-
             const profileContent = document.getElementById('profileContent');
+            
             profileContent.innerHTML = `
                 <div class="profile-header">
                     <div class="profile-cover" style="background-image: url('${profile.bannerPicture || ''}')">
@@ -147,38 +152,96 @@ class WalletConnector {
                 <div class="posts-container"></div>
             `;
 
-            // Setup event listeners
             document.getElementById('editProfileBtn').addEventListener('click', () => {
                 this.showEditProfileForm(profile);
             });
 
-            // Setup post form
             const postForm = document.querySelector('.create-post-box');
             if (postForm) {
-                console.log('Setting up post form...');
                 postHandler.setupPostForm(postForm);
-            } else {
-                console.error('Post form not found in DOM');
+                await postHandler.loadPosts();
             }
 
-            // Load posts
-            try {
-                console.log('Loading posts...');
-                await postHandler.loadPosts();
-            } catch (error) {
-                console.error('Error loading posts:', error);
-            }
-        } else {
-            console.error('No profile found for account:', this.account);
+        } catch (error) {
+            console.error('Error loading profile:', error);
+            ErrorHandler.showError('Failed to load profile', document.getElementById('profileContent'));
+        }
+    }
+
+    async updateProfile(profileData) {
+        try {
+            await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    ...profileData,
+                    walletAddress: this.account
+                })
+            });
+
+            await this.loadProfileData();
+            ErrorHandler.showSuccess('Profile updated successfully!', document.getElementById('profileContent'));
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            ErrorHandler.showError('Failed to update profile', document.getElementById('profileContent'));
         }
     }
 
     showEditProfileForm(profile) {
-        // Your existing showEditProfileForm code here
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content edit-profile-form">
+                <span class="close-modal">&times;</span>
+                <h2>Edit Profile</h2>
+                <form id="editProfileForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" value="${profile.username}" maxlength="50" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bio">Bio</label>
+                        <textarea id="bio" maxlength="500">${profile.bio}</textarea>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="submit" class="save-profile-btn">Save Changes</button>
+                        <button type="button" class="cancel-edit-btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        const closeModal = () => {
+            modal.remove();
+        };
+
+        modal.querySelector('.close-modal').addEventListener('click', closeModal);
+        modal.querySelector('.cancel-edit-btn').addEventListener('click', closeModal);
+
+        modal.querySelector('#editProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = modal.querySelector('#username').value;
+            const bio = modal.querySelector('#bio').value;
+
+            try {
+                await this.updateProfile({ username, bio });
+                closeModal();
+            } catch (error) {
+                ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
+            }
+        });
+    }
+
+    signOut() {
+        if (confirm('Are you sure you want to sign out?')) {
+            SessionManager.clearSession();
+            window.location.reload();
+        }
     }
 }
 
-// Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing WalletConnector...');
     new WalletConnector();

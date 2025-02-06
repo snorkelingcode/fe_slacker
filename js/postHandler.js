@@ -40,7 +40,6 @@ class PostHandler {
             }
         });
 
-        // Add keydown event for Ctrl/Cmd + Enter to submit
         postInput.addEventListener('keydown', async (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 try {
@@ -96,25 +95,16 @@ class PostHandler {
                 mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null
             };
 
-            const response = await fetch(API_ENDPOINTS.posts, {
+            await makeApiCall(API_ENDPOINTS.posts, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify(postData)
             });
 
-            const result = await handleApiResponse(response);
-
-            // Clear form
             container.querySelector('.post-input').value = '';
             container.querySelector('.media-preview').innerHTML = '';
             container.querySelector('.media-input').value = '';
 
-            // Show success message
             ErrorHandler.showSuccess('Post created successfully!', container);
-
-            // Refresh posts display
             await this.loadPosts();
         } catch (error) {
             throw new Error(`Failed to create post: ${error.message}`);
@@ -123,10 +113,8 @@ class PostHandler {
 
     async loadPosts() {
         try {
-            const response = await fetch(API_ENDPOINTS.posts);
-            const posts = await handleApiResponse(response);
+            const posts = await makeApiCall(API_ENDPOINTS.posts);
             
-            // Render posts
             const postsContainer = document.querySelector('.posts-container');
             if (postsContainer) {
                 postsContainer.innerHTML = posts.length > 0 
@@ -141,22 +129,20 @@ class PostHandler {
         }
     }
 
-    async loadUserPosts(walletAddress) {
-        try {
-            const response = await fetch(`${API_ENDPOINTS.posts}/user/${walletAddress}`);
-            const posts = await handleApiResponse(response);
-            
-            const postsContainer = document.querySelector('.posts-container');
-            if (postsContainer) {
-                postsContainer.innerHTML = posts.length > 0 
-                    ? posts.map(post => this.renderPost(post)).join('')
-                    : '<p class="no-posts">No posts yet</p>';
+    async deletePost(postId) {
+        if (!confirm('Are you sure you want to delete this post?')) return;
 
-                this.setupPostInteractions();
-            }
+        try {
+            await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
+                method: 'DELETE',
+                body: JSON.stringify({ walletAddress: this.walletAddress })
+            });
+
+            await this.loadPosts();
+            ErrorHandler.showSuccess('Post deleted successfully!', document.querySelector('.posts-container'));
         } catch (error) {
-            console.error('Error loading user posts:', error);
-            ErrorHandler.showError('Failed to load posts', document.querySelector('.posts-container'));
+            console.error('Error deleting post:', error);
+            ErrorHandler.showError('Failed to delete post', document.querySelector('.posts-container'));
         }
     }
 
@@ -198,29 +184,7 @@ class PostHandler {
             .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>');
     }
 
-    async deletePost(postId) {
-        if (!confirm('Are you sure you want to delete this post?')) return;
-
-        try {
-            const response = await fetch(`${API_ENDPOINTS.posts}/${postId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ walletAddress: this.walletAddress })
-            });
-
-            await handleApiResponse(response);
-            await this.loadPosts();
-            ErrorHandler.showSuccess('Post deleted successfully!', document.querySelector('.posts-container'));
-        } catch (error) {
-            console.error('Error deleting post:', error);
-            ErrorHandler.showError('Failed to delete post', document.querySelector('.posts-container'));
-        }
-    }
-
     setupPostInteractions() {
-        // Setup delete buttons
         document.querySelectorAll('.delete-post-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const postId = e.target.closest('.post').dataset.postId;
@@ -228,11 +192,9 @@ class PostHandler {
             });
         });
 
-        // Setup like and comment buttons - to be implemented later
         document.querySelectorAll('.interaction-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Future implementation
             });
         });
     }
