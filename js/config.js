@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://be-slacker.vercel.app/api';
+const API_BASE_URL = 'https://be-slacker-git-main-snorkelingcodes-projects.vercel.app/api';
 
 const API_ENDPOINTS = {
     posts: `${API_BASE_URL}/posts`,
@@ -6,7 +6,6 @@ const API_ENDPOINTS = {
 };
 
 const DEFAULT_FETCH_OPTIONS = {
-    credentials: 'include',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -14,7 +13,7 @@ const DEFAULT_FETCH_OPTIONS = {
 
 const handleApiResponse = async (response) => {
     if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ message: 'Network error' }));
         throw new Error(error.message || 'API request failed');
     }
     return response.json();
