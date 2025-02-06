@@ -1,7 +1,7 @@
 class PostHandler {
     constructor(walletAddress) {
         this.walletAddress = walletAddress;
-        this.apiUrl = 'https://your-backend-url.vercel.app/api'; // Replace with your actual backend URL
+        this.apiUrl = 'https:/be-slacker.vercel.app/api'; // Replace with your actual backend URL
     }
 
     async createPost(container) {
