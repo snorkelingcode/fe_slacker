@@ -2,7 +2,6 @@ class WalletConnector {
     constructor() {
         this.web3 = null;
         this.account = null;
-        this.postHandler = null;
         this.setupEventListeners();
         this.checkExistingConnection();
     }
@@ -42,7 +41,6 @@ class WalletConnector {
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
                     if (accounts.length > 0) {
                         this.web3 = new Web3(window.ethereum);
-                        this.postHandler = new PostHandler(this.account);
                         await this.loadProfileData();
                         document.getElementById('walletLogin').style.display = 'none';
                         document.getElementById('profileContent').style.display = 'block';
@@ -67,7 +65,6 @@ class WalletConnector {
                 
                 this.account = accounts[0];
                 this.web3 = new Web3(window.ethereum);
-                this.postHandler = new PostHandler(this.account);
 
                 SessionManager.setWalletAddress(this.account);
 
@@ -109,6 +106,9 @@ class WalletConnector {
     async loadProfileData() {
         const profile = JSON.parse(localStorage.getItem(`profile_${this.account}`));
         if (profile) {
+            // Create postHandler instance here
+            const postHandler = new PostHandler(this.account);
+            
             const profileContent = document.getElementById('profileContent');
             profileContent.innerHTML = `
                 <div class="profile-header">
@@ -129,7 +129,7 @@ class WalletConnector {
                         </div>
                     </div>
                 </div>
-                ${this.postHandler.renderPostForm()}
+                ${postHandler.renderPostForm()}
                 <div class="posts-container"></div>
             `;
 
@@ -140,47 +140,19 @@ class WalletConnector {
 
             // Setup post form
             const postForm = document.querySelector('.create-post-box');
-            this.postHandler.setupPostForm(postForm);
+            postHandler.setupPostForm(postForm);
 
             // Load posts
-            await this.loadPosts();
+            await postHandler.loadPosts();
         }
     }
 
-    async loadPosts() {
-        const posts = JSON.parse(localStorage.getItem(`posts_${this.account}`)) || [];
-        const postsContainer = document.querySelector('.posts-container');
-        
-        if (postsContainer) {
-            postsContainer.innerHTML = posts.length > 0 
-                ? posts.map(post => this.postHandler.renderPost(post)).join('')
-                : '<p class="no-posts">No posts yet</p>';
-            
-            this.setupPostInteractions();
-        }
+    showEditProfileForm(profile) {
+        // Your existing edit profile form code
     }
-
-    setupPostInteractions() {
-        // Setup delete buttons
-        document.querySelectorAll('.delete-post-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const postId = e.target.closest('.post').dataset.postId;
-                this.postHandler.deletePost(postId);
-            });
-        });
-
-        // Setup like and comment buttons
-        document.querySelectorAll('.interaction-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                // Will be implemented with backend
-                e.preventDefault();
-            });
-        });
-    }
-
-    // ... [Rest of the profile editing code remains the same]
 }
 
+// Make sure PostHandler is loaded before this script
 document.addEventListener('DOMContentLoaded', () => {
     new WalletConnector();
 });
