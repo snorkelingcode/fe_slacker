@@ -1,55 +1,7 @@
 class PostHandler {
     constructor(walletAddress) {
         this.walletAddress = walletAddress;
-    }
-
-    renderPostForm() {
-        return `
-            <div class="create-post-box">
-                <div class="post-form">
-                    <textarea class="post-input" placeholder="What's on your mind?"></textarea>
-                    <div class="post-actions">
-                        <div class="media-options">
-                            <label class="media-button">
-                                <input type="file" accept="image/*,video/*" hidden class="media-input">
-                                <span>Add Media</span>
-                            </label>
-                        </div>
-                        <button class="post-button">Post</button>
-                    </div>
-                    <div class="media-preview"></div>
-                </div>
-            </div>
-        `;
-    }
-
-    setupPostForm(container) {
-        const mediaInput = container.querySelector('.media-input');
-        const postButton = container.querySelector('.post-button');
-
-        mediaInput.addEventListener('change', (e) => this.handleMediaUpload(e));
-        postButton.addEventListener('click', () => this.createPost(container));
-    }
-
-    async handleMediaUpload(event) {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const mediaPreview = document.querySelector('.media-preview');
-                const isVideo = file.type.startsWith('video/');
-                mediaPreview.innerHTML = isVideo
-                    ? `<video src="${e.target.result}" controls class="media-preview-content"></video>`
-                    : `<img src="${e.target.result}" class="media-preview-content">`;
-                mediaPreview.innerHTML += '<button class="remove-media">×</button>';
-
-                mediaPreview.querySelector('.remove-media').addEventListener('click', () => {
-                    mediaPreview.innerHTML = '';
-                    event.target.value = '';
-                });
-            };
-            reader.readAsDataURL(file);
-        }
+        this.apiUrl = 'https://your-backend-url.vercel.app/api'; // Replace with your actual backend URL
     }
 
     async createPost(container) {
@@ -61,77 +13,121 @@ class PostHandler {
             return;
         }
 
-        const post = {
-            id: `post_${Date.now()}`,
-            walletAddress: this.walletAddress,
-            content,
-            timestamp: new Date().toISOString(),
-            mediaUrl: mediaElement ? mediaElement.src : null,
-            mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null,
-            likes: [],
-            comments: []
-        };
+        try {
+            const response = await fetch(`${this.apiUrl}/posts`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    walletAddress: this.walletAddress,
+                    content,
+                    mediaUrl: mediaElement ? mediaElement.src : null,
+                    mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null
+                })
+            });
 
-        // Save post to localStorage
-        const posts = JSON.parse(localStorage.getItem(`posts_${this.walletAddress}`)) || [];
-        posts.unshift(post);
-        localStorage.setItem(`posts_${this.walletAddress}`, JSON.stringify(posts));
+            if (!response.ok) {
+                throw new Error('Failed to create post');
+            }
 
-        // Clear form
-        container.querySelector('.post-input').value = '';
-        container.querySelector('.media-preview').innerHTML = '';
-        container.querySelector('.media-input').value = '';
+            // Clear form
+            container.querySelector('.post-input').value = '';
+            container.querySelector('.media-preview').innerHTML = '';
+            container.querySelector('.media-input').value = '';
 
-        // Refresh posts display
-        await this.loadPosts();
-    }
-
-    renderPost(post) {
-        const isCurrentUser = post.walletAddress === this.walletAddress;
-        const profile = JSON.parse(localStorage.getItem(`profile_${post.walletAddress}`));
-        const username = profile ? profile.username : post.walletAddress.substring(0, 6) + '...';
-
-        return `
-            <div class="post" data-post-id="${post.id}">
-                <div class="post-header">
-                    <div class="post-meta">
-                        <span class="post-author">${username}</span>
-                        <span class="post-timestamp">${new Date(post.timestamp).toLocaleString()}</span>
-                    </div>
-                    ${isCurrentUser ? `<button class="delete-post-btn">Delete</button>` : ''}
-                </div>
-                <div class="post-content">
-                    <p>${this.formatPostContent(post.content)}</p>
-                    ${post.mediaUrl ? `
-                        <div class="post-media-container">
-                            ${post.mediaType === 'video' 
-                                ? `<video src="${post.mediaUrl}" controls class="post-media"></video>`
-                                : `<img src="${post.mediaUrl}" alt="Post image" class="post-media">`
-                            }
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="post-interactions">
-                    <button class="interaction-btn">❤️ ${post.likes.length}</button>
-                    <button class="interaction-btn">💬 ${post.comments.length}</button>
-                </div>
-            </div>
-        `;
-    }
-
-    formatPostContent(content) {
-        return content
-            .replace(/\n/g, '<br>')
-            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>')
-            .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>');
-    }
-
-    deletePost(postId) {
-        if (confirm('Are you sure you want to delete this post?')) {
-            const posts = JSON.parse(localStorage.getItem(`posts_${this.walletAddress}`)) || [];
-            const updatedPosts = posts.filter(post => post.id !== postId);
-            localStorage.setItem(`posts_${this.walletAddress}`, JSON.stringify(updatedPosts));
-            this.loadPosts();
+            // Refresh posts display
+            await this.loadPosts();
+        } catch (error) {
+            console.error('Error creating post:', error);
+            alert('Failed to create post. Please try again.');
         }
     }
+
+    async loadPosts() {
+        try {
+            const response = await fetch(`${this.apiUrl}/posts`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch posts');
+            }
+
+            const posts = await response.json();
+            
+            // Render posts
+            const postsContainer = document.querySelector('.posts-container');
+            postsContainer.innerHTML = posts.map(post => this.renderPost(post)).join('');
+
+            // Add event listeners for post interactions
+            this.setupPostInteractions(posts);
+        } catch (error) {
+            console.error('Error loading posts:', error);
+        }
+    }
+
+    async deletePost(postId) {
+        if (confirm('Are you sure you want to delete this post?')) {
+            try {
+                const response = await fetch(`${this.apiUrl}/posts/${postId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        walletAddress: this.walletAddress
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete post');
+                }
+
+                await this.loadPosts();
+            } catch (error) {
+                console.error('Error deleting post:', error);
+                alert('Failed to delete post. Please try again.');
+            }
+        }
+    }
+
+    async likePost(postId) {
+        try {
+            const response = await fetch(`${this.apiUrl}/posts/${postId}/like`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    walletAddress: this.walletAddress
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to like/unlike post');
+            }
+
+            await this.loadPosts();
+        } catch (error) {
+            console.error('Error liking post:', error);
+        }
+    }
+
+    setupPostInteractions(posts) {
+        // Setup delete buttons
+        document.querySelectorAll('.delete-post-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const postId = e.target.closest('.post').dataset.postId;
+                this.deletePost(postId);
+            });
+        });
+
+        // Setup like buttons
+        document.querySelectorAll('.like-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                const postId = e.target.closest('.post').dataset.postId;
+                this.likePost(postId);
+            });
+        });
+    }
+
+    // Your existing renderPost and formatPostContent methods can remain the same
 }
