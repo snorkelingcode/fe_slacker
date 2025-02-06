@@ -1,5 +1,6 @@
 class WalletConnector {
     constructor() {
+        console.log('WalletConnector initializing...');
         this.web3 = null;
         this.account = null;
         this.setupEventListeners();
@@ -34,6 +35,7 @@ class WalletConnector {
     }
 
     async checkExistingConnection() {
+        console.log('Checking existing connection...');
         if (SessionManager.isConnected()) {
             this.account = SessionManager.getWalletAddress();
             if (typeof window.ethereum !== 'undefined') {
@@ -57,6 +59,7 @@ class WalletConnector {
     }
 
     async connectMetaMask() {
+        console.log('Attempting to connect MetaMask...');
         if (typeof window.ethereum !== 'undefined') {
             try {
                 const accounts = await window.ethereum.request({ 
@@ -64,6 +67,7 @@ class WalletConnector {
                 });
                 
                 this.account = accounts[0];
+                console.log('Connected account:', this.account);
                 this.web3 = new Web3(window.ethereum);
 
                 SessionManager.setWalletAddress(this.account);
@@ -104,11 +108,21 @@ class WalletConnector {
     }
 
     async loadProfileData() {
+        console.log('Loading profile data...');
         const profile = JSON.parse(localStorage.getItem(`profile_${this.account}`));
         if (profile) {
-            // Create postHandler instance here
-            const postHandler = new PostHandler(this.account);
+            console.log('Profile found:', profile);
+            console.log('Creating PostHandler instance...');
             
+            // Verify PostHandler exists
+            if (typeof PostHandler === 'undefined') {
+                console.error('PostHandler is not defined! Check if postHandler.js is loaded correctly.');
+                return;
+            }
+
+            const postHandler = new PostHandler(this.account);
+            console.log('PostHandler instance created:', postHandler);
+
             const profileContent = document.getElementById('profileContent');
             profileContent.innerHTML = `
                 <div class="profile-header">
@@ -140,19 +154,32 @@ class WalletConnector {
 
             // Setup post form
             const postForm = document.querySelector('.create-post-box');
-            postHandler.setupPostForm(postForm);
+            if (postForm) {
+                console.log('Setting up post form...');
+                postHandler.setupPostForm(postForm);
+            } else {
+                console.error('Post form not found in DOM');
+            }
 
             // Load posts
-            await postHandler.loadPosts();
+            try {
+                console.log('Loading posts...');
+                await postHandler.loadPosts();
+            } catch (error) {
+                console.error('Error loading posts:', error);
+            }
+        } else {
+            console.error('No profile found for account:', this.account);
         }
     }
 
     showEditProfileForm(profile) {
-        // Your existing edit profile form code
+        // Your existing showEditProfileForm code here
     }
 }
 
-// Make sure PostHandler is loaded before this script
+// Wait for DOM to load
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing WalletConnector...');
     new WalletConnector();
 });

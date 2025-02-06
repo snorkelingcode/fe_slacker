@@ -1,3 +1,4 @@
+console.log('PostHandler is loading...');
 class PostHandler {
     constructor(walletAddress) {
         this.walletAddress = walletAddress;
