@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed - Slacker</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="logo">
+            Slacker
+        </div>
+        <div class="nav-buttons">
+            <a href="profile.html" class="nav-button">Profile</a>
+            <a href="messages.html" class="nav-button">Messages</a>
+            <button id="signOutButton" class="nav-button sign-out-btn" style="display: none;">Sign Out</button>
+        </div>
+    </nav>
+    <main>
+        <div id="feedContent"></div>
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.6.0/web3.min.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/session.js"></script>
+    <script src="js/postHandler.js"></script>
+    <script src="js/feed.js"></script>
+</body>
+</html>

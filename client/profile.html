@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Slacker</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="logo">
+            Slacker
+        </div>
+        <div class="nav-buttons">
+            <a href="index.html" class="nav-button">Feed</a>
+            <a href="messages.html" class="nav-button">Messages</a>
+            <button id="signOutButton" class="nav-button sign-out-btn" style="display: none;">Sign Out</button>
+        </div>
+    </nav>
+    <main>
+        <div class="wallet-login" id="walletLogin">
+            <h2>Connect Your Wallet to Slacker</h2>
+            <div class="wallet-options">
+                <button class="wallet-button" id="metamaskButton">
+                    <img src="https://cdn.cdnlogo.com/logos/m/79/metamask.svg" alt="MetaMask">
+                    MetaMask
+                </button>
+            </div>
+        </div>
+        <div class="profile-container" id="profileContent" style="display: none;"></div>
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.6.0/web3.min.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/session.js"></script>
+    <script src="js/postHandler.js"></script>
+    <script src="js/profile.js"></script>
+</body>
+</html>
