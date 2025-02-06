@@ -8,8 +8,10 @@ const API_ENDPOINTS = {
 const DEFAULT_FETCH_OPTIONS = {
     headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
     },
-    credentials: 'include'
+    credentials: 'include',
+    mode: 'cors'
 };
 
 const handleApiResponse = async (response) => {

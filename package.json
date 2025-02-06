@@ -4,7 +4,9 @@
     "description": "Frontend for Slacker application",
     "main": "index.html",
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
+      "test": "echo \"Error: no test specified\" && exit 1",
+                "start": "echo 'Static site - no build needed'",
+          "deploy": "vercel"
     },
     "keywords": [],
     "author": "",
