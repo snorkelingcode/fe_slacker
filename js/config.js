@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://be-slacker-git-main-snorkelingcodes-projects.vercel.app/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://be-slacker.vercel.app//api';
 
 const API_ENDPOINTS = {
     posts: `${API_BASE_URL}/posts`,
