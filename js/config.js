@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://be-slacker-git-main-snorkelingcodes-projects.vercel.app/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://be-slacker-git-main-snorkelingcodes-projects.vercel.app/api';
 
 const API_ENDPOINTS = {
     posts: `${API_BASE_URL}/posts`,
@@ -9,6 +9,7 @@ const DEFAULT_FETCH_OPTIONS = {
     headers: {
         'Content-Type': 'application/json',
     },
+    credentials: 'include'
 };
 
 const handleApiResponse = async (response) => {
@@ -19,7 +20,6 @@ const handleApiResponse = async (response) => {
     return response.json();
 };
 
-// Helper function to make API calls
 const makeApiCall = async (endpoint, options = {}) => {
     const finalOptions = {
         ...DEFAULT_FETCH_OPTIONS,
