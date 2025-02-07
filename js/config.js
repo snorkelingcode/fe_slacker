@@ -8,10 +8,10 @@ const API_ENDPOINTS = {
 const DEFAULT_FETCH_OPTIONS = {
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        'Accept': 'application/json'
     },
-    credentials: 'same-origin',
-    mode: 'cors'
+    mode: 'cors',
+    credentials: 'include'
 };
 
 const handleApiResponse = async (response) => {
@@ -21,7 +21,7 @@ const handleApiResponse = async (response) => {
             const errorData = await response.json();
             errorMessage = errorData.message || 'API request failed';
         } catch (e) {
-            errorMessage = 'Network error';
+            errorMessage = `Network error: ${response.status} ${response.statusText}`;
         }
         throw new Error(errorMessage);
     }
@@ -39,7 +39,7 @@ const makeApiCall = async (endpoint, options = {}) => {
             },
         };
 
-        console.log('Making API call to:', endpoint, 'with options:', finalOptions);
+        console.log(`Making API call to: ${endpoint}`);
         const response = await fetch(endpoint, finalOptions);
         return await handleApiResponse(response);
     } catch (error) {
