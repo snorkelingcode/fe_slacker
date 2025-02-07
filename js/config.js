@@ -10,8 +10,7 @@ const DEFAULT_FETCH_OPTIONS = {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
     },
-    mode: 'cors',
-    credentials: 'include'
+    mode: 'cors'
 };
 
 const handleApiResponse = async (response) => {
@@ -19,7 +18,7 @@ const handleApiResponse = async (response) => {
         let errorMessage;
         try {
             const errorData = await response.json();
-            errorMessage = errorData.message || 'API request failed';
+            errorMessage = errorData.message || errorData.error || 'API request failed';
         } catch (e) {
             errorMessage = `Network error: ${response.status} ${response.statusText}`;
         }
@@ -39,7 +38,6 @@ const makeApiCall = async (endpoint, options = {}) => {
             },
         };
 
-        console.log(`Making API call to: ${endpoint}`);
         const response = await fetch(endpoint, finalOptions);
         return await handleApiResponse(response);
     } catch (error) {
