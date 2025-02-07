@@ -8,31 +8,38 @@ const API_ENDPOINTS = {
 const DEFAULT_FETCH_OPTIONS = {
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
     },
-    credentials: 'include',
+    credentials: 'same-origin',
     mode: 'cors'
 };
 
 const handleApiResponse = async (response) => {
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Network error' }));
-        throw new Error(error.message || 'API request failed');
+        let errorMessage;
+        try {
+            const errorData = await response.json();
+            errorMessage = errorData.message || 'API request failed';
+        } catch (e) {
+            errorMessage = 'Network error';
+        }
+        throw new Error(errorMessage);
     }
     return response.json();
 };
 
 const makeApiCall = async (endpoint, options = {}) => {
-    const finalOptions = {
-        ...DEFAULT_FETCH_OPTIONS,
-        ...options,
-        headers: {
-            ...DEFAULT_FETCH_OPTIONS.headers,
-            ...options.headers,
-        },
-    };
-
     try {
+        const finalOptions = {
+            ...DEFAULT_FETCH_OPTIONS,
+            ...options,
+            headers: {
+                ...DEFAULT_FETCH_OPTIONS.headers,
+                ...options.headers,
+            },
+        };
+
+        console.log('Making API call to:', endpoint, 'with options:', finalOptions);
         const response = await fetch(endpoint, finalOptions);
         return await handleApiResponse(response);
     } catch (error) {
