@@ -2,6 +2,189 @@ class PostHandler {
     constructor(walletAddress) {
         this.walletAddress = walletAddress;
         this.loadingPosts = false;
+
+        // Check if required utilities are available
+        if (typeof LoadingState === 'undefined') {
+            console.error('LoadingState is not defined. Make sure utils.js is loaded properly.');
+        }
+        if (typeof ErrorHandler === 'undefined') {
+            console.error('ErrorHandler is not defined. Make sure utils.js is loaded properly.');
+        }
+        if (typeof MediaHandler === 'undefined') {
+            console.error('MediaHandler is not defined. Make sure utils.js is loaded properly.');
+        }
+    }
+
+    renderPostForm() {
+        return `
+            <div class="create-post-box">
+                <div class="post-form">
+                    <textarea class="post-input" placeholder="What's on your mind?"></textarea>
+                    <div class="post-actions">
+                        <div class="media-options">
+                            <label class="media-button">
+                                <input type="file" accept="image/*,video/*" hidden class="media-input">
+                                <span>Add Media</span>
+                            </label>
+                        </div>
+                        <button class="post-button">Post</button>
+                    </div>
+                    <div class="media-preview"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    setupPostForm(container) {
+        const mediaInput = container.querySelector('.media-input');
+        const postButton = container.querySelector('.post-button');
+        const postInput = container.querySelector('.post-input');
+
+        mediaInput.addEventListener('change', (e) => this.handleMediaUpload(e));
+        postButton.addEventListener('click', async () => {
+            try {
+                if (typeof LoadingState !== 'undefined') {
+                    LoadingState.show(postButton);
+                }
+
+                await this.createPost(container);
+
+                if (typeof LoadingState !== 'undefined') {
+                    LoadingState.hide(postButton);
+                }
+            } catch (error) {
+                if (typeof LoadingState !== 'undefined') {
+                    LoadingState.hide(postButton);
+                }
+                if (typeof ErrorHandler !== 'undefined') {
+                    ErrorHandler.showError(error.message, container);
+                } else {
+                    console.error('Error:', error.message);
+                }
+            }
+        });
+
+        postInput.addEventListener('keydown', async (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                try {
+                    if (typeof LoadingState !== 'undefined') {
+                        LoadingState.show(postButton);
+                    }
+
+                    await this.createPost(container);
+
+                    if (typeof LoadingState !== 'undefined') {
+                        LoadingState.hide(postButton);
+                    }
+                } catch (error) {
+                    if (typeof LoadingState !== 'undefined') {
+                        LoadingState.hide(postButton);
+                    }
+                    if (typeof ErrorHandler !== 'undefined') {
+                        ErrorHandler.showError(error.message, container);
+                    } else {
+                        console.error('Error:', error.message);
+                    }
+                }
+            }
+        });
+    }
+
+    async handleMediaUpload(event) {
+        try {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (typeof MediaHandler !== 'undefined') {
+                MediaHandler.validateFile(file);
+                const mediaUrl = await MediaHandler.handleImageUpload(file);
+                
+                const mediaPreview = document.querySelector('.media-preview');
+                const isVideo = file.type.startsWith('video/');
+                mediaPreview.innerHTML = isVideo
+                    ? `<video src="${mediaUrl}" controls class="media-preview-content"></video>`
+                    : `<img src="${mediaUrl}" class="media-preview-content">`;
+                mediaPreview.innerHTML += '<button class="remove-media">×</button>';
+
+                mediaPreview.querySelector('.remove-media').addEventListener('click', () => {
+                    mediaPreview.innerHTML = '';
+                    event.target.value = '';
+                });
+            }
+        } catch (error) {
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.showError(error.message, event.target.parentElement);
+            } else {
+                console.error('Error:', error.message);
+            }
+            event.target.value = '';
+        }
+    }
+
+    async createPost(container) {
+        const content = container.querySelector('.post-input').value;
+        const mediaElement = container.querySelector('.media-preview-content');
+
+        if (!content && !mediaElement) {
+            throw new Error('Please add some content to your post');
+        }
+
+        try {
+            const postData = {
+                walletAddress: this.walletAddress,
+                content,
+                mediaUrl: mediaElement ? mediaElement.src : null,
+                mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null
+            };
+
+            await makeApiCall(API_ENDPOINTS.posts, {
+                method: 'POST',
+                body: JSON.stringify(postData)
+            });
+
+            container.querySelector('.post-input').value = '';
+            container.querySelector('.media-preview').innerHTML = '';
+            container.querySelector('.media-input').value = '';
+
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.showSuccess('Post created successfully!', container);
+            }
+            await this.loadPosts();
+        } catch (error) {
+            throw new Error(`Failed to create post: ${error.message}`);
+        }
+    }
+
+    async loadPosts() {
+        if (this.loadingPosts) return;
+        this.loadingPosts = true;
+
+        try {
+            const postsContainer = document.querySelector('.posts-container');
+            if (!postsContainer) return;
+
+            if (typeof LoadingState !== 'undefined') {
+                LoadingState.show(postsContainer);
+            }
+            
+            const posts = await makeApiCall(API_ENDPOINTS.posts);
+            
+            postsContainer.innerHTML = posts.length > 0 
+                ? posts.map(post => this.renderPost(post)).join('')
+                : '<p class="no-posts">No posts yet</p>';
+
+            this.setupPostInteractions();
+        } catch (error) {
+            console.error('Error loading posts:', error);
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.showError('Failed to load posts', document.querySelector('.posts-container'));
+            }
+        } finally {
+            this.loadingPosts = false;
+            if (typeof LoadingState !== 'undefined') {
+                LoadingState.hide(document.querySelector('.posts-container'));
+            }
+        }
     }
 
     async handleLike(postId) {
@@ -17,8 +200,11 @@ class PostHandler {
             await this.loadPosts();
         } catch (error) {
             console.error('Error liking post:', error);
-            ErrorHandler.showError('Failed to like post', document.querySelector('.posts-container'));
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.showError('Failed to like post', document.querySelector('.posts-container'));
+            }
         } finally {
+            const button = document.querySelector(`.like-btn[data-post-id="${postId}"]`);
             if (button) button.disabled = false;
         }
     }
@@ -39,8 +225,11 @@ class PostHandler {
             await this.loadPosts();
         } catch (error) {
             console.error('Error adding comment:', error);
-            ErrorHandler.showError('Failed to add comment', document.querySelector('.posts-container'));
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.showError('Failed to add comment', document.querySelector('.posts-container'));
+            }
         } finally {
+            const button = document.querySelector(`.comment-btn[data-post-id="${postId}"]`);
             if (button) button.disabled = false;
         }
     }
@@ -55,36 +244,14 @@ class PostHandler {
             });
 
             await this.loadPosts();
-            ErrorHandler.showSuccess('Post deleted successfully!', document.querySelector('.posts-container'));
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.showSuccess('Post deleted successfully!', document.querySelector('.posts-container'));
+            }
         } catch (error) {
             console.error('Error deleting post:', error);
-            ErrorHandler.showError('Failed to delete post', document.querySelector('.posts-container'));
-        }
-    }
-
-    async loadPosts() {
-        if (this.loadingPosts) return;
-        this.loadingPosts = true;
-
-        try {
-            const postsContainer = document.querySelector('.posts-container');
-            if (!postsContainer) return;
-
-            LoadingState.show(postsContainer);
-            
-            const posts = await makeApiCall(API_ENDPOINTS.posts);
-            
-            postsContainer.innerHTML = posts.length > 0 
-                ? posts.map(post => this.renderPost(post)).join('')
-                : '<p class="no-posts">No posts yet</p>';
-
-            this.setupPostInteractions();
-        } catch (error) {
-            console.error('Error loading posts:', error);
-            ErrorHandler.showError('Failed to load posts', document.querySelector('.posts-container'));
-        } finally {
-            this.loadingPosts = false;
-            LoadingState.hide(document.querySelector('.posts-container'));
+            if (typeof ErrorHandler !== 'undefined') {
+                ErrorHandler.showError('Failed to delete post', document.querySelector('.posts-container'));
+            }
         }
     }
 
@@ -143,6 +310,13 @@ class PostHandler {
             : '';
     }
 
+    formatPostContent(content) {
+        return content
+            .replace(/\n/g, '<br>')
+            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>')
+            .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>');
+    }
+
     setupPostInteractions() {
         // Delete buttons
         document.querySelectorAll('.delete-post-btn').forEach(button => {
@@ -183,12 +357,5 @@ class PostHandler {
                 }
             });
         });
-    }
-
-    formatPostContent(content) {
-        return content
-            .replace(/\n/g, '<br>')
-            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>')
-            .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>');
     }
 }
