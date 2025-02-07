@@ -8,7 +8,8 @@ const API_ENDPOINTS = {
 const DEFAULT_FETCH_OPTIONS = {
     headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'Origin': 'https://fe-slacker.vercel.app'
     },
     mode: 'cors'
 };
@@ -18,9 +19,9 @@ const handleApiResponse = async (response) => {
         let errorMessage;
         try {
             const errorData = await response.json();
-            errorMessage = errorData.message || errorData.error || 'API request failed';
+            errorMessage = errorData.message || errorData.error || `Error: ${response.status}`;
         } catch (e) {
-            errorMessage = `Network error: ${response.status} ${response.statusText}`;
+            errorMessage = `Network error: ${response.status}`;
         }
         throw new Error(errorMessage);
     }
