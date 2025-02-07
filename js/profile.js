@@ -41,7 +41,7 @@ class WalletConnector {
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                    if (accounts.length > 0) {
+                    if (accounts.length > 0 && accounts[0].toLowerCase() === this.account.toLowerCase()) {
                         this.web3 = new Web3(window.ethereum);
                         await this.loadProfileData();
                         document.getElementById('walletLogin').style.display = 'none';
@@ -49,13 +49,23 @@ class WalletConnector {
                         document.getElementById('signOutButton').style.display = 'block';
                     } else {
                         SessionManager.clearSession();
+                        this.showLoginForm();
                     }
                 } catch (error) {
                     console.error('Error checking wallet connection:', error);
                     SessionManager.clearSession();
+                    this.showLoginForm();
                 }
             }
+        } else {
+            this.showLoginForm();
         }
+    }
+
+    showLoginForm() {
+        document.getElementById('walletLogin').style.display = 'block';
+        document.getElementById('profileContent').style.display = 'none';
+        document.getElementById('signOutButton').style.display = 'none';
     }
 
     async connectMetaMask() {
@@ -74,9 +84,13 @@ class WalletConnector {
 
                 try {
                     await this.createOrLoadProfile();
-                    document.getElementById('walletLogin').style.display = 'none';
-                    document.getElementById('profileContent').style.display = 'block';
-                    document.getElementById('signOutButton').style.display = 'block';
+                    if (window.location.pathname === '/profile.html') {
+                        document.getElementById('walletLogin').style.display = 'none';
+                        document.getElementById('profileContent').style.display = 'block';
+                        document.getElementById('signOutButton').style.display = 'block';
+                    } else {
+                        window.location.href = 'index.html';
+                    }
                 } catch (error) {
                     console.error('Error handling profile:', error);
                     ErrorHandler.showError('Failed to load profile', document.getElementById('profileContent'));
