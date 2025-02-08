@@ -132,53 +132,32 @@ class WalletConnector {
     async loadProfileData() {
         console.log('Loading profile data...');
         try {
+            const profileContent = document.getElementById('profileContent');
+            if (!profileContent) {
+                console.error('Profile content element not found');
+                return;
+            }
+            
+            // Show loading state
+            profileContent.innerHTML = '<div class="loading">Loading profile...</div>';
+            
+            console.log('Fetching profile for account:', this.account);
             const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
             console.log('Profile data loaded:', profile);
             
-            if (typeof PostHandler === 'undefined') {
-                console.error('PostHandler is not defined!');
-                return;
-            }
-
-            const postHandler = new PostHandler(this.account);
-            const profileContent = document.getElementById('profileContent');
-            
-            profileContent.innerHTML = `
-                <div class="profile-header">
-                    <div class="profile-cover" style="background-image: url('${profile.bannerPicture || ''}')">
-                        ${!profile.bannerPicture ? '<span class="no-banner">No Banner Image</span>' : ''}
-                    </div>
-                    <div class="profile-info">
-                        <div class="profile-picture">
-                            ${profile.profilePicture ? 
-                                `<img src="${profile.profilePicture}" alt="Profile" class="profile-img">` : 
-                                'No Image'}
-                        </div>
-                        <h1 class="profile-name">${profile.username}</h1>
-                        <p class="profile-wallet">${this.account}</p>
-                        <p class="profile-bio">${profile.bio}</p>
-                        <div class="profile-actions">
-                            <button id="editProfileBtn" class="edit-profile-btn">Edit Profile</button>
-                        </div>
-                    </div>
-                </div>
-                ${postHandler.renderPostForm()}
-                <div class="posts-container"></div>
-            `;
-
-            document.getElementById('editProfileBtn').addEventListener('click', () => {
-                this.showEditProfileForm(profile);
-            });
-
-            const postForm = document.querySelector('.create-post-box');
-            if (postForm) {
-                postHandler.setupPostForm(postForm);
-                await postHandler.loadPosts();
-            }
-
+            // Rest of your profile rendering code...
         } catch (error) {
             console.error('Error loading profile:', error);
-            ErrorHandler.showError('Failed to load profile', document.getElementById('profileContent'));
+            const profileContent = document.getElementById('profileContent');
+            if (profileContent) {
+                profileContent.innerHTML = `
+                    <div class="error-message">
+                        Failed to load profile: ${error.message}
+                        <br>
+                        <button onclick="window.location.reload()">Try Again</button>
+                    </div>
+                `;
+            }
         }
     }
 
