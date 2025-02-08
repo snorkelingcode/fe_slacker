@@ -1,5 +1,5 @@
 // config.js
-const API_BASE_URL = 'https://be-slacker.vercel.app/api';
+const API_BASE_URL = 'https://be-slacker.vercel.app';
 
 const API_ENDPOINTS = {
     posts: `${API_BASE_URL}/posts`,
