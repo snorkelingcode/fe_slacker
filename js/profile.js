@@ -112,23 +112,40 @@ class WalletConnector {
             username: `User_${this.account.substring(2, 8)}`,
             bio: 'New to Slacker'
         };
-
+    
         try {
-            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
-            await this.loadProfileData();
-        } catch (error) {
-            if (error.message.includes('User not found')) {
-                await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                    method: 'POST',
-                    body: JSON.stringify(defaultProfile)
-                });
+            console.log('Attempting to load existing profile...');
+            try {
+                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
+                console.log('Existing profile loaded:', response);
                 await this.loadProfileData();
-            } else {
-                throw error;
+                return;
+            } catch (error) {
+                // If profile doesn't exist, create a new one
+                if (error.message.includes('User not found')) {
+                    console.log('Profile not found, creating new profile...');
+                    const createResponse = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                        method: 'POST',
+                        body: JSON.stringify(defaultProfile)
+                    });
+                    console.log('New profile created:', createResponse);
+                    await this.loadProfileData();
+                } else {
+                    throw error;
+                }
             }
+        } catch (error) {
+            console.error('Error in createOrLoadProfile:', error);
+            // Show error in UI
+            const errorContainer = document.getElementById('errorContainer') || document.createElement('div');
+            errorContainer.id = 'errorContainer';
+            errorContainer.className = 'error-message';
+            errorContainer.textContent = `Failed to load profile: ${error.message}`;
+            document.querySelector('main').prepend(errorContainer);
+            throw error;
         }
     }
-
+    
     async loadProfileData() {
         console.log('Loading profile data...');
         try {
@@ -145,7 +162,46 @@ class WalletConnector {
             const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
             console.log('Profile data loaded:', profile);
             
-            // Rest of your profile rendering code...
+            if (typeof PostHandler === 'undefined') {
+                console.error('PostHandler is not defined!');
+                return;
+            }
+    
+            const postHandler = new PostHandler(this.account);
+            
+            profileContent.innerHTML = `
+                <div class="profile-header">
+                    <div class="profile-cover" style="background-image: url('${profile.bannerPicture || ''}')">
+                        ${!profile.bannerPicture ? '<span class="no-banner">No Banner Image</span>' : ''}
+                    </div>
+                    <div class="profile-info">
+                        <div class="profile-picture">
+                            ${profile.profilePicture ? 
+                                `<img src="${profile.profilePicture}" alt="Profile" class="profile-img">` : 
+                                'No Image'}
+                        </div>
+                        <h1 class="profile-name">${profile.username}</h1>
+                        <p class="profile-wallet">${this.account}</p>
+                        <p class="profile-bio">${profile.bio}</p>
+                        <div class="profile-actions">
+                            <button id="editProfileBtn" class="edit-profile-btn">Edit Profile</button>
+                        </div>
+                    </div>
+                </div>
+                ${postHandler.renderPostForm()}
+                <div class="posts-container"></div>
+            `;
+    
+            document.getElementById('editProfileBtn').addEventListener('click', () => {
+                this.showEditProfileForm(profile);
+            });
+    
+            const postForm = document.querySelector('.create-post-box');
+            if (postForm) {
+                postHandler.setupPostForm(postForm);
+                await postHandler.loadPosts();
+            }
+    
         } catch (error) {
             console.error('Error loading profile:', error);
             const profileContent = document.getElementById('profileContent');
@@ -154,7 +210,7 @@ class WalletConnector {
                     <div class="error-message">
                         Failed to load profile: ${error.message}
                         <br>
-                        <button onclick="window.location.reload()">Try Again</button>
+                        <button onclick="window.location.reload()" class="retry-btn">Try Again</button>
                     </div>
                 `;
             }
