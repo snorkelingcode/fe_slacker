@@ -1,6 +1,6 @@
 class PostHandler {
     constructor(walletAddress) {
-        this.walletAddress = walletAddress;
+        this.walletAddress = walletAddress.toLowerCase();
         this.loadingPosts = false;
 
         // Check if required utilities are available
@@ -123,6 +123,7 @@ class PostHandler {
 
 // Inside PostHandler class:
 async createPost(container) {
+    console.log('Current Wallet Address', this.walletAddress);
     const content = container.querySelector('.post-input').value;
     const mediaElement = container.querySelector('.media-preview-content');
 
@@ -132,7 +133,7 @@ async createPost(container) {
 
     try {
         const postData = {
-            walletAddress: this.walletAddress,
+            walletAddress: this.walletAddress.toLowerCase(),
             content,
             mediaUrl: mediaElement ? mediaElement.src : null,
             mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null

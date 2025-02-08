@@ -120,14 +120,11 @@ class WalletConnector {
             bio: 'New to Slacker'
         };
     
-        const profileContent = document.getElementById('profileContent');
-    
         try {
             // Try to fetch existing profile
             try {
                 const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
                 console.log('Existing profile loaded:', response);
-                await this.loadProfileData();
             } catch (error) {
                 // If profile doesn't exist, create new one
                 if (error.message.includes('User profile not found')) {
@@ -136,14 +133,12 @@ class WalletConnector {
                         body: JSON.stringify(defaultProfile)
                     });
                     console.log('New profile created:', newProfile);
-                    await this.loadProfileData();
                 } else {
                     throw error;
                 }
             }
         } catch (error) {
             console.error('Error in createOrLoadProfile:', error);
-            ErrorHandler.showError(error.message, profileContent);
             throw error;
         }
     }
