@@ -186,32 +186,41 @@ class WalletConnector {
 
     async createOrLoadProfile() {
         const defaultProfile = {
-            walletAddress: this.account,
+            walletAddress: this.account.toLowerCase(), // Ensure lowercase
             username: `User_${this.account.substring(2, 8)}`,
             bio: 'New to Slacker'
         };
-
+    
         const profileContent = document.getElementById('profileContent');
-
+    
         try {
+            console.log('Attempting to create/load profile with:', defaultProfile);
+    
             // First try to load existing profile
-            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
-            console.log('Existing profile loaded:', response);
-            await this.loadProfileData();
-        } catch (error) {
-            // If profile doesn't exist, create a new one
-            if (error.message.includes('User not found')) {
-                console.log('Creating new profile...');
-                await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                    method: 'POST',
-                    body: JSON.stringify(defaultProfile)
-                });
+            try {
+                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
+                console.log('Existing profile loaded:', response);
                 await this.loadProfileData();
-            } else {
-                console.error('Error in createOrLoadProfile:', error);
-                ErrorHandler.showError(error.message, profileContent);
-                throw error;
+            } catch (error) {
+                console.error('Profile fetch error:', error);
+    
+                // If profile doesn't exist, create a new one
+                if (error.message.includes('User profile not found')) {
+                    console.log('Creating new profile...');
+                    const newProfile = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                        method: 'POST',
+                        body: JSON.stringify(defaultProfile)
+                    });
+                    console.log('New profile created:', newProfile);
+                    await this.loadProfileData();
+                } else {
+                    throw error;
+                }
             }
+        } catch (error) {
+            console.error('Complete error in createOrLoadProfile:', error);
+            ErrorHandler.showError(error.message, profileContent);
+            throw error;
         }
     }
 
