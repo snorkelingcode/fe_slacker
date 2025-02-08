@@ -1,8 +1,8 @@
 const API_BASE_URL = 'https://be-slacker.vercel.app/api/';
 
 const API_ENDPOINTS = {
-    posts: `${API_BASE_URL}/posts`,
-    users: `${API_BASE_URL}/users`,
+    posts: `${API_BASE_URL}posts`,
+    users: `${API_BASE_URL}users`,
 };
 
 const DEFAULT_FETCH_OPTIONS = {
