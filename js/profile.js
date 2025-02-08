@@ -1,74 +1,3 @@
-// Error Handler Class
-class ErrorHandler {
-    static showError(message, container) {
-        if (!container) return;
-        
-        // Remove any existing error messages
-        const existingError = container.querySelector('.error-message');
-        if (existingError) {
-            existingError.remove();
-        }
-        
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'error-message';
-        errorDiv.textContent = message;
-        
-        // Insert at the top of the container
-        container.insertBefore(errorDiv, container.firstChild);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-            if (errorDiv.parentElement === container) {
-                errorDiv.remove();
-            }
-        }, 5000);
-    }
-
-    static showSuccess(message, container) {
-        if (!container) return;
-        
-        // Remove any existing success messages
-        const existingSuccess = container.querySelector('.success-message');
-        if (existingSuccess) {
-            existingSuccess.remove();
-        }
-        
-        const successDiv = document.createElement('div');
-        successDiv.className = 'success-message';
-        successDiv.textContent = message;
-        
-        // Insert at the top of the container
-        container.insertBefore(successDiv, container.firstChild);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-            if (successDiv.parentElement === container) {
-                successDiv.remove();
-            }
-        }, 5000);
-    }
-}
-
-// Loading State Handler
-class LoadingState {
-    static show(element) {
-        if (!element) return;
-        element.classList.add('loading');
-        const spinner = document.createElement('div');
-        spinner.className = 'loading-spinner';
-        element.appendChild(spinner);
-        element.disabled = true;
-    }
-
-    static hide(element) {
-        if (!element) return;
-        element.classList.remove('loading');
-        const spinner = element.querySelector('.loading-spinner');
-        if (spinner) spinner.remove();
-        element.disabled = false;
-    }
-}
-
 class WalletConnector {
     constructor() {
         console.log('WalletConnector initializing...');
@@ -186,7 +115,7 @@ class WalletConnector {
 
     async createOrLoadProfile() {
         const defaultProfile = {
-            walletAddress: this.account.toLowerCase(), // Ensure lowercase
+            walletAddress: this.account.toLowerCase(),
             username: `User_${this.account.substring(2, 8)}`,
             bio: 'New to Slacker'
         };
@@ -196,7 +125,6 @@ class WalletConnector {
         try {
             console.log('Attempting to create/load profile with:', defaultProfile);
     
-            // First try to load existing profile
             try {
                 const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
                 console.log('Existing profile loaded:', response);
@@ -204,7 +132,6 @@ class WalletConnector {
             } catch (error) {
                 console.error('Profile fetch error:', error);
     
-                // If profile doesn't exist, create a new one
                 if (error.message.includes('User profile not found')) {
                     console.log('Creating new profile...');
                     const newProfile = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
