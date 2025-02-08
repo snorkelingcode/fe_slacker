@@ -1,3 +1,74 @@
+// Error Handler Class
+class ErrorHandler {
+    static showError(message, container) {
+        if (!container) return;
+        
+        // Remove any existing error messages
+        const existingError = container.querySelector('.error-message');
+        if (existingError) {
+            existingError.remove();
+        }
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message';
+        errorDiv.textContent = message;
+        
+        // Insert at the top of the container
+        container.insertBefore(errorDiv, container.firstChild);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (errorDiv.parentElement === container) {
+                errorDiv.remove();
+            }
+        }, 5000);
+    }
+
+    static showSuccess(message, container) {
+        if (!container) return;
+        
+        // Remove any existing success messages
+        const existingSuccess = container.querySelector('.success-message');
+        if (existingSuccess) {
+            existingSuccess.remove();
+        }
+        
+        const successDiv = document.createElement('div');
+        successDiv.className = 'success-message';
+        successDiv.textContent = message;
+        
+        // Insert at the top of the container
+        container.insertBefore(successDiv, container.firstChild);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (successDiv.parentElement === container) {
+                successDiv.remove();
+            }
+        }, 5000);
+    }
+}
+
+// Loading State Handler
+class LoadingState {
+    static show(element) {
+        if (!element) return;
+        element.classList.add('loading');
+        const spinner = document.createElement('div');
+        spinner.className = 'loading-spinner';
+        element.appendChild(spinner);
+        element.disabled = true;
+    }
+
+    static hide(element) {
+        if (!element) return;
+        element.classList.remove('loading');
+        const spinner = element.querySelector('.loading-spinner');
+        if (spinner) spinner.remove();
+        element.disabled = false;
+    }
+}
+
 class WalletConnector {
     constructor() {
         console.log('WalletConnector initializing...');
@@ -13,7 +84,12 @@ class WalletConnector {
         
         if (metamaskButton) {
             metamaskButton.addEventListener('click', async () => {
-                await this.connectMetaMask();
+                LoadingState.show(metamaskButton);
+                try {
+                    await this.connectMetaMask();
+                } finally {
+                    LoadingState.hide(metamaskButton);
+                }
             });
         }
 
@@ -70,39 +146,41 @@ class WalletConnector {
 
     async connectMetaMask() {
         console.log('Attempting to connect MetaMask...');
-        if (typeof window.ethereum !== 'undefined') {
+        const profileContent = document.getElementById('profileContent');
+
+        if (typeof window.ethereum === 'undefined') {
+            ErrorHandler.showError('Please install MetaMask to continue!', document.getElementById('walletLogin'));
+            setTimeout(() => {
+                window.open('https://metamask.io/download/', '_blank');
+            }, 2000);
+            return;
+        }
+
+        try {
+            const accounts = await window.ethereum.request({ 
+                method: 'eth_requestAccounts' 
+            });
+            
+            this.account = accounts[0];
+            console.log('Connected account:', this.account);
+            this.web3 = new Web3(window.ethereum);
+
+            SessionManager.setWalletAddress(this.account);
+
             try {
-                const accounts = await window.ethereum.request({ 
-                    method: 'eth_requestAccounts' 
-                });
-                
-                this.account = accounts[0];
-                console.log('Connected account:', this.account);
-                this.web3 = new Web3(window.ethereum);
-
-                SessionManager.setWalletAddress(this.account);
-
-                try {
-                    await this.createOrLoadProfile();
-                    if (window.location.pathname === '/profile.html') {
-                        document.getElementById('walletLogin').style.display = 'none';
-                        document.getElementById('profileContent').style.display = 'block';
-                        document.getElementById('signOutButton').style.display = 'block';
-                    } else {
-                        window.location.href = 'index.html';
-                    }
-                } catch (error) {
-                    console.error('Error handling profile:', error);
-                    ErrorHandler.showError('Failed to load profile', document.getElementById('profileContent'));
-                }
-
+                await this.createOrLoadProfile();
+                document.getElementById('walletLogin').style.display = 'none';
+                document.getElementById('profileContent').style.display = 'block';
+                document.getElementById('signOutButton').style.display = 'block';
             } catch (error) {
-                console.error("MetaMask connection error:", error);
-                ErrorHandler.showError('Failed to connect to MetaMask', document.getElementById('walletLogin'));
+                console.error('Error handling profile:', error);
+                ErrorHandler.showError(error.message, profileContent);
             }
-        } else {
-            alert('Please install MetaMask to continue!');
-            window.open('https://metamask.io/download/', '_blank');
+
+        } catch (error) {
+            console.error("MetaMask connection error:", error);
+            ErrorHandler.showError('Failed to connect to MetaMask: ' + error.message, 
+                document.getElementById('walletLogin'));
         }
     }
 
@@ -112,61 +190,45 @@ class WalletConnector {
             username: `User_${this.account.substring(2, 8)}`,
             bio: 'New to Slacker'
         };
-    
+
+        const profileContent = document.getElementById('profileContent');
+
         try {
-            console.log('Attempting to load existing profile...');
-            try {
-                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
-                console.log('Existing profile loaded:', response);
-                await this.loadProfileData();
-                return;
-            } catch (error) {
-                // If profile doesn't exist, create a new one
-                if (error.message.includes('User not found')) {
-                    console.log('Profile not found, creating new profile...');
-                    const createResponse = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                        method: 'POST',
-                        body: JSON.stringify(defaultProfile)
-                    });
-                    console.log('New profile created:', createResponse);
-                    await this.loadProfileData();
-                } else {
-                    throw error;
-                }
-            }
+            // First try to load existing profile
+            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
+            console.log('Existing profile loaded:', response);
+            await this.loadProfileData();
         } catch (error) {
-            console.error('Error in createOrLoadProfile:', error);
-            // Show error in UI
-            const errorContainer = document.getElementById('errorContainer') || document.createElement('div');
-            errorContainer.id = 'errorContainer';
-            errorContainer.className = 'error-message';
-            errorContainer.textContent = `Failed to load profile: ${error.message}`;
-            document.querySelector('main').prepend(errorContainer);
-            throw error;
+            // If profile doesn't exist, create a new one
+            if (error.message.includes('User not found')) {
+                console.log('Creating new profile...');
+                await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                    method: 'POST',
+                    body: JSON.stringify(defaultProfile)
+                });
+                await this.loadProfileData();
+            } else {
+                console.error('Error in createOrLoadProfile:', error);
+                ErrorHandler.showError(error.message, profileContent);
+                throw error;
+            }
         }
     }
-    
+
     async loadProfileData() {
         console.log('Loading profile data...');
+        const profileContent = document.getElementById('profileContent');
+        
         try {
-            const profileContent = document.getElementById('profileContent');
-            if (!profileContent) {
-                console.error('Profile content element not found');
-                return;
-            }
+            LoadingState.show(profileContent);
             
-            // Show loading state
-            profileContent.innerHTML = '<div class="loading">Loading profile...</div>';
-            
-            console.log('Fetching profile for account:', this.account);
             const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
             console.log('Profile data loaded:', profile);
             
-            if (typeof PostHandler === 'undefined') {
-                console.error('PostHandler is not defined!');
-                return;
+            if (!profile) {
+                throw new Error('Failed to load profile data');
             }
-    
+
             const postHandler = new PostHandler(this.account);
             
             profileContent.innerHTML = `
@@ -191,34 +253,29 @@ class WalletConnector {
                 ${postHandler.renderPostForm()}
                 <div class="posts-container"></div>
             `;
-    
+
             document.getElementById('editProfileBtn').addEventListener('click', () => {
                 this.showEditProfileForm(profile);
             });
-    
+
             const postForm = document.querySelector('.create-post-box');
             if (postForm) {
                 postHandler.setupPostForm(postForm);
                 await postHandler.loadPosts();
             }
-    
+
         } catch (error) {
             console.error('Error loading profile:', error);
-            const profileContent = document.getElementById('profileContent');
-            if (profileContent) {
-                profileContent.innerHTML = `
-                    <div class="error-message">
-                        Failed to load profile: ${error.message}
-                        <br>
-                        <button onclick="window.location.reload()" class="retry-btn">Try Again</button>
-                    </div>
-                `;
-            }
+            ErrorHandler.showError(error.message, profileContent);
+        } finally {
+            LoadingState.hide(profileContent);
         }
     }
 
     async updateProfile(profileData) {
         try {
+            LoadingState.show(document.querySelector('.edit-profile-form'));
+            
             await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -231,7 +288,10 @@ class WalletConnector {
             ErrorHandler.showSuccess('Profile updated successfully!', document.getElementById('profileContent'));
         } catch (error) {
             console.error('Error updating profile:', error);
-            ErrorHandler.showError('Failed to update profile', document.getElementById('profileContent'));
+            ErrorHandler.showError('Failed to update profile: ' + error.message, 
+                document.querySelector('.edit-profile-form'));
+        } finally {
+            LoadingState.hide(document.querySelector('.edit-profile-form'));
         }
     }
 
@@ -291,6 +351,7 @@ class WalletConnector {
     }
 }
 
+// Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing WalletConnector...');
     new WalletConnector();

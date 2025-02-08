@@ -1,4 +1,4 @@
-// Update your config.js
+// config.js
 const API_BASE_URL = 'https://be-slacker.vercel.app/api';
 
 const API_ENDPOINTS = {
@@ -10,43 +10,32 @@ const DEFAULT_FETCH_OPTIONS = {
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
     },
-    mode: 'cors',
-    credentials: 'include'
+    mode: 'cors'
 };
 
 const handleApiResponse = async (response) => {
-    console.log(`API Response Status: ${response.status} for ${response.url}`);
-    
     if (!response.ok) {
         let errorMessage;
         try {
             const errorData = await response.json();
-            console.error('API Error Response:', errorData);
             errorMessage = errorData.message || errorData.error || `Error: ${response.status}`;
         } catch (e) {
-            console.error('Error parsing error response:', e);
             errorMessage = `Network error: ${response.status}`;
+            if (response.status === 504) {
+                errorMessage = 'Request timed out. Please try again.';
+            }
         }
         throw new Error(errorMessage);
     }
-    
-    try {
-        const data = await response.json();
-        console.log('API Response Data:', data);
-        return data;
-    } catch (e) {
-        console.error('Error parsing success response:', e);
-        throw new Error('Invalid response format');
-    }
+    return response.json();
 };
 
 const makeApiCall = async (endpoint, options = {}) => {
     try {
-        console.log(`Making API call to: ${endpoint}`, options);
-        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
         const finalOptions = {
             ...DEFAULT_FETCH_OPTIONS,
             ...options,
@@ -54,12 +43,17 @@ const makeApiCall = async (endpoint, options = {}) => {
                 ...DEFAULT_FETCH_OPTIONS.headers,
                 ...options.headers,
             },
+            signal: controller.signal
         };
 
         const response = await fetch(endpoint, finalOptions);
+        clearTimeout(timeoutId);
         return await handleApiResponse(response);
     } catch (error) {
         console.error('API call failed:', error);
+        if (error.name === 'AbortError') {
+            throw new Error('Request timed out. Please try again.');
+        }
         throw error;
     }
 };
