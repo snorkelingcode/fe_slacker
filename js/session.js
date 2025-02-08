@@ -1,19 +1,52 @@
 class SessionManager {
-    static setWalletAddress(address) {
-        localStorage.setItem('walletAddress', address);
-        localStorage.setItem('lastConnected', new Date().toString());
+    static async setWalletAddress(address) {
+        try {
+            // Call backend to create/validate session
+            const response = await makeApiCall(`${API_ENDPOINTS.users}/session`, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    walletAddress: address.toLowerCase(),
+                    timestamp: new Date().toISOString()
+                })
+            });
+
+            // Backend returns a secure token
+            if (response.token) {
+                localStorage.setItem('authToken', response.token);
+                localStorage.setItem('walletAddress', address.toLowerCase());
+                localStorage.setItem('lastConnected', new Date().toString());
+                
+                // Store user profile information
+                if (response.user) {
+                    localStorage.setItem('userProfile', JSON.stringify(response.user));
+                }
+            }
+
+            return response;
+        } catch (error) {
+            console.error('Session creation failed:', error);
+            throw error;
+        }
     }
 
-    static getWalletAddress() {
+    static async getWalletAddress() {
+        const token = localStorage.getItem('authToken');
         const address = localStorage.getItem('walletAddress');
-        const lastConnected = new Date(localStorage.getItem('lastConnected'));
-        const now = new Date();
         
-        if (lastConnected && (now - lastConnected) > (24 * 60 * 60 * 1000)) {
+        if (!token || !address) return null;
+
+        try {
+            // Validate token with backend
+            await makeApiCall(`${API_ENDPOINTS.users}/validate-session`, {
+                method: 'POST',
+                body: JSON.stringify({ token })
+            });
+
+            return address;
+        } catch (error) {
             this.clearSession();
             return null;
         }
-        return address;
     }
 
     static isConnected() {
@@ -21,23 +54,32 @@ class SessionManager {
     }
 
     static clearSession() {
+        // Optionally call backend to invalidate session
+        const walletAddress = localStorage.getItem('walletAddress');
+        
+        if (walletAddress) {
+            makeApiCall(`${API_ENDPOINTS.users}/logout`, {
+                method: 'POST',
+                body: JSON.stringify({ walletAddress })
+            }).catch(console.error);
+        }
+
+        localStorage.removeItem('authToken');
         localStorage.removeItem('walletAddress');
         localStorage.removeItem('lastConnected');
+        localStorage.removeItem('userProfile');
     }
 
     static getProfile() {
-        const walletAddress = this.getWalletAddress();
-        if (!walletAddress) return null;
-        const profile = localStorage.getItem(`profile_${walletAddress}`);
+        const profile = localStorage.getItem('userProfile');
         return profile ? JSON.parse(profile) : null;
     }
 
     static updateProfile(profileData) {
-        const walletAddress = this.getWalletAddress();
-        if (!walletAddress) return;
-        localStorage.setItem(`profile_${walletAddress}`, JSON.stringify({
-            ...profileData,
-            updatedAt: new Date().toISOString()
-        }));
+        const currentProfile = this.getProfile();
+        if (currentProfile) {
+            const updatedProfile = { ...currentProfile, ...profileData };
+            localStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+        }
     }
 }

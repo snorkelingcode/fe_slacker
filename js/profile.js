@@ -43,15 +43,24 @@ class WalletConnector {
         console.log('Checking existing connection...');
         if (SessionManager.isConnected()) {
             this.account = SessionManager.getWalletAddress();
+            
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    
                     if (accounts.length > 0 && accounts[0].toLowerCase() === this.account.toLowerCase()) {
                         this.web3 = new Web3(window.ethereum);
-                        await this.loadProfileData();
-                        document.getElementById('walletLogin').style.display = 'none';
-                        document.getElementById('profileContent').style.display = 'block';
-                        document.getElementById('signOutButton').style.display = 'block';
+                        
+                        // Check if we're on the profile page
+                        if (window.location.pathname.includes('profile.html')) {
+                            await this.loadProfileData();
+                            document.getElementById('walletLogin').style.display = 'none';
+                            document.getElementById('profileContent').style.display = 'block';
+                            document.getElementById('signOutButton').style.display = 'block';
+                        } else {
+                            // Redirect to feed if not on profile page
+                            window.location.href = 'index.html';
+                        }
                     } else {
                         SessionManager.clearSession();
                         this.showLoginForm();
@@ -209,7 +218,7 @@ class WalletConnector {
             LoadingState.hide(document.getElementById('profileContent'));
         }
     }
-    
+
     async updateProfile(profileData) {
         try {
             LoadingState.show(document.querySelector('.edit-profile-form'));
@@ -249,7 +258,7 @@ class WalletConnector {
                     </div>
                     <div class="form-group">
                         <label for="bio">Bio</label>
-                        <textarea id="bio" maxlength="500">${profile.bio}</textarea>
+                        <textarea id="bio" maxlength="500">${profile.bio || ''}</textarea>
                     </div>
                     <div class="form-buttons">
                         <button type="submit" class="save-profile-btn">Save Changes</button>

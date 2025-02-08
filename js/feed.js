@@ -23,39 +23,34 @@ class FeedHandler {
     }
 
     setupFeed() {
-        // Add post form to feed content
         const feedContent = document.getElementById('feedContent');
         feedContent.innerHTML = this.postHandler.renderPostForm() + '<div class="posts-container"></div>';
         
-        // Setup post form handlers
         const postForm = document.querySelector('.create-post-box');
         this.postHandler.setupPostForm(postForm);
     }
 
     async loadPosts() {
-        const posts = [];
-        // Get all posts from all users
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('posts_')) {
-                const userPosts = JSON.parse(localStorage.getItem(key)) || [];
-                posts.push(...userPosts);
-            }
+        try {
+            LoadingState.show(document.querySelector('.posts-container'));
+            
+            const posts = await makeApiCall(API_ENDPOINTS.posts);
+            const postsContainer = document.querySelector('.posts-container');
+            
+            postsContainer.innerHTML = posts.length > 0 
+                ? posts.map(post => this.postHandler.renderPost(post)).join('')
+                : '<p class="no-posts">No posts yet. Be the first to post!</p>';
+            
+            this.setupPostInteractions(posts);
+        } catch (error) {
+            console.error('Error loading posts:', error);
+            ErrorHandler.showError('Failed to load posts', document.querySelector('.posts-container'));
+        } finally {
+            LoadingState.hide(document.querySelector('.posts-container'));
         }
-
-        // Sort posts by timestamp
-        posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        // Render posts
-        const postsContainer = document.querySelector('.posts-container');
-        postsContainer.innerHTML = posts.map(post => this.postHandler.renderPost(post)).join('');
-
-        // Add event listeners for post interactions
-        this.setupPostInteractions(posts);
     }
 
     setupPostInteractions(posts) {
-        // Setup delete buttons
         document.querySelectorAll('.delete-post-btn').forEach(button => {
             button.addEventListener('click', (e) => {
                 const postId = e.target.closest('.post').dataset.postId;
@@ -63,11 +58,17 @@ class FeedHandler {
             });
         });
 
-        // Setup like and comment buttons
         document.querySelectorAll('.interaction-btn').forEach(button => {
             button.addEventListener('click', (e) => {
-                // This will be implemented when we add backend support
-                e.preventDefault();
+                const postId = e.target.closest('.post').dataset.postId;
+                const type = e.target.classList.contains('like-btn') ? 'like' : 'comment';
+                
+                if (type === 'like') {
+                    this.postHandler.handleLike(postId);
+                } else {
+                    // Future implementation for comments
+                    console.log('Comment functionality coming soon');
+                }
             });
         });
     }
