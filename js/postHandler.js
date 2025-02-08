@@ -121,71 +121,70 @@ class PostHandler {
         }
     }
 
-    async createPost(container) {
-        const content = container.querySelector('.post-input').value;
-        const mediaElement = container.querySelector('.media-preview-content');
+// Inside PostHandler class:
+async createPost(container) {
+    const content = container.querySelector('.post-input').value;
+    const mediaElement = container.querySelector('.media-preview-content');
 
-        if (!content && !mediaElement) {
-            throw new Error('Please add some content to your post');
-        }
-
-        try {
-            const postData = {
-                walletAddress: this.walletAddress,
-                content,
-                mediaUrl: mediaElement ? mediaElement.src : null,
-                mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null
-            };
-
-            await makeApiCall(API_ENDPOINTS.posts, {
-                method: 'POST',
-                body: JSON.stringify(postData)
-            });
-
-            container.querySelector('.post-input').value = '';
-            container.querySelector('.media-preview').innerHTML = '';
-            container.querySelector('.media-input').value = '';
-
-            if (typeof ErrorHandler !== 'undefined') {
-                ErrorHandler.showSuccess('Post created successfully!', container);
-            }
-            await this.loadPosts();
-        } catch (error) {
-            throw new Error(`Failed to create post: ${error.message}`);
-        }
+    if (!content && !mediaElement) {
+        throw new Error('Please add some content to your post');
     }
 
-    async loadPosts() {
-        if (this.loadingPosts) return;
-        this.loadingPosts = true;
+    try {
+        const postData = {
+            walletAddress: this.walletAddress,
+            content,
+            mediaUrl: mediaElement ? mediaElement.src : null,
+            mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null
+        };
 
-        try {
-            const postsContainer = document.querySelector('.posts-container');
-            if (!postsContainer) return;
+        // Send post to backend API
+        await makeApiCall(API_ENDPOINTS.posts, {
+            method: 'POST',
+            body: JSON.stringify(postData)
+        });
 
-            if (typeof LoadingState !== 'undefined') {
-                LoadingState.show(postsContainer);
-            }
-            
-            const posts = await makeApiCall(API_ENDPOINTS.posts);
-            
-            postsContainer.innerHTML = posts.length > 0 
-                ? posts.map(post => this.renderPost(post)).join('')
-                : '<p class="no-posts">No posts yet</p>';
+        // Clear form
+        container.querySelector('.post-input').value = '';
+        container.querySelector('.media-preview').innerHTML = '';
+        container.querySelector('.media-input').value = '';
 
-            this.setupPostInteractions();
-        } catch (error) {
-            console.error('Error loading posts:', error);
-            if (typeof ErrorHandler !== 'undefined') {
-                ErrorHandler.showError('Failed to load posts', document.querySelector('.posts-container'));
-            }
-        } finally {
-            this.loadingPosts = false;
-            if (typeof LoadingState !== 'undefined') {
-                LoadingState.hide(document.querySelector('.posts-container'));
-            }
-        }
+        // Show success message
+        ErrorHandler.showSuccess('Post created successfully!', container);
+        
+        // Reload posts from database
+        await this.loadPosts();
+    } catch (error) {
+        throw new Error(`Failed to create post: ${error.message}`);
     }
+}
+
+async loadPosts() {
+    if (this.loadingPosts) return;
+    this.loadingPosts = true;
+
+    try {
+        const postsContainer = document.querySelector('.posts-container');
+        if (!postsContainer) return;
+
+        LoadingState.show(postsContainer);
+        
+        // Fetch posts from backend API
+        const posts = await makeApiCall(API_ENDPOINTS.posts);
+        
+        postsContainer.innerHTML = posts.length > 0 
+            ? posts.map(post => this.renderPost(post)).join('')
+            : '<p class="no-posts">No posts yet</p>';
+
+        this.setupPostInteractions();
+    } catch (error) {
+        console.error('Error loading posts:', error);
+        ErrorHandler.showError('Failed to load posts', document.querySelector('.posts-container'));
+    } finally {
+        this.loadingPosts = false;
+        LoadingState.hide(document.querySelector('.posts-container'));
+    }
+}
 
     async handleLike(postId) {
         try {

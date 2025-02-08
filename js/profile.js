@@ -123,17 +123,14 @@ class WalletConnector {
         const profileContent = document.getElementById('profileContent');
     
         try {
-            console.log('Attempting to create/load profile with:', defaultProfile);
-    
+            // Try to fetch existing profile
             try {
                 const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
                 console.log('Existing profile loaded:', response);
                 await this.loadProfileData();
             } catch (error) {
-                console.error('Profile fetch error:', error);
-    
+                // If profile doesn't exist, create new one
                 if (error.message.includes('User profile not found')) {
-                    console.log('Creating new profile...');
                     const newProfile = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                         method: 'POST',
                         body: JSON.stringify(defaultProfile)
@@ -145,73 +142,17 @@ class WalletConnector {
                 }
             }
         } catch (error) {
-            console.error('Complete error in createOrLoadProfile:', error);
+            console.error('Error in createOrLoadProfile:', error);
             ErrorHandler.showError(error.message, profileContent);
             throw error;
         }
     }
-
-    async loadProfileData() {
-        console.log('Loading profile data...');
-        const profileContent = document.getElementById('profileContent');
-        
-        try {
-            LoadingState.show(profileContent);
-            
-            const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
-            console.log('Profile data loaded:', profile);
-            
-            if (!profile) {
-                throw new Error('Failed to load profile data');
-            }
-
-            const postHandler = new PostHandler(this.account);
-            
-            profileContent.innerHTML = `
-                <div class="profile-header">
-                    <div class="profile-cover" style="background-image: url('${profile.bannerPicture || ''}')">
-                        ${!profile.bannerPicture ? '<span class="no-banner">No Banner Image</span>' : ''}
-                    </div>
-                    <div class="profile-info">
-                        <div class="profile-picture">
-                            ${profile.profilePicture ? 
-                                `<img src="${profile.profilePicture}" alt="Profile" class="profile-img">` : 
-                                'No Image'}
-                        </div>
-                        <h1 class="profile-name">${profile.username}</h1>
-                        <p class="profile-wallet">${this.account}</p>
-                        <p class="profile-bio">${profile.bio}</p>
-                        <div class="profile-actions">
-                            <button id="editProfileBtn" class="edit-profile-btn">Edit Profile</button>
-                        </div>
-                    </div>
-                </div>
-                ${postHandler.renderPostForm()}
-                <div class="posts-container"></div>
-            `;
-
-            document.getElementById('editProfileBtn').addEventListener('click', () => {
-                this.showEditProfileForm(profile);
-            });
-
-            const postForm = document.querySelector('.create-post-box');
-            if (postForm) {
-                postHandler.setupPostForm(postForm);
-                await postHandler.loadPosts();
-            }
-
-        } catch (error) {
-            console.error('Error loading profile:', error);
-            ErrorHandler.showError(error.message, profileContent);
-        } finally {
-            LoadingState.hide(profileContent);
-        }
-    }
-
+    
     async updateProfile(profileData) {
         try {
             LoadingState.show(document.querySelector('.edit-profile-form'));
             
+            // Update profile in database
             await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -219,7 +160,7 @@ class WalletConnector {
                     walletAddress: this.account
                 })
             });
-
+    
             await this.loadProfileData();
             ErrorHandler.showSuccess('Profile updated successfully!', document.getElementById('profileContent'));
         } catch (error) {
