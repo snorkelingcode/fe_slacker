@@ -256,14 +256,24 @@ async loadPosts() {
     }
 
     renderPost(post) {
-        const isCurrentUser = post.walletAddress === this.walletAddress;
-        const formattedDate = post.createdAt ? new Date(post.createdAt).toLocaleString() : 'Invalid date';
+        // Add null checks and default values
+        const isCurrentUser = post.author && post.author.walletAddress 
+            ? post.author.walletAddress.toLowerCase() === this.walletAddress.toLowerCase() 
+            : false;
+        
+        const formattedDate = post.createdAt 
+            ? new Date(post.createdAt).toLocaleString() 
+            : 'Invalid date';
+        
+        const authorAddress = post.author 
+            ? post.author.walletAddress.substring(0, 6) 
+            : 'Unknown';
         
         return `
-            <div class="post" data-post-id="${post._id}">
+            <div class="post" data-post-id="${post.id}">
                 <div class="post-header">
                     <div class="post-meta">
-                        <span class="post-author">${post.walletAddress.substring(0, 6)}...</span>
+                        <span class="post-author">${authorAddress}...</span>
                         <span class="post-timestamp">${formattedDate}</span>
                     </div>
                     ${isCurrentUser ? `<button class="delete-post-btn">Delete</button>` : ''}
@@ -280,17 +290,12 @@ async loadPosts() {
                     ` : ''}
                 </div>
                 <div class="post-interactions">
-                    <button class="interaction-btn like-btn" data-post-id="${post._id}">
+                    <button class="interaction-btn like-btn" data-post-id="${post.id}">
                         ❤️ ${post.likes ? post.likes.length : 0}
                     </button>
-                    <button class="interaction-btn comment-btn" data-post-id="${post._id}">
+                    <button class="interaction-btn comment-btn" data-post-id="${post.id}">
                         💬 ${post.comments ? post.comments.length : 0}
                     </button>
-                </div>
-                <div class="comment-section" style="display: none;">
-                    <textarea class="comment-input" placeholder="Write a comment..."></textarea>
-                    <button class="post-comment-btn">Post Comment</button>
-                    ${this.renderComments(post.comments)}
                 </div>
             </div>
         `;

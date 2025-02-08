@@ -98,9 +98,9 @@ class WalletConnector {
 
             try {
                 await this.createOrLoadProfile();
-                document.getElementById('walletLogin').style.display = 'none';
-                document.getElementById('profileContent').style.display = 'block';
-                document.getElementById('signOutButton').style.display = 'block';
+                
+                // Redirect to index.html (feed page)
+                window.location.href = 'index.html';
             } catch (error) {
                 console.error('Error handling profile:', error);
                 ErrorHandler.showError(error.message, profileContent);
@@ -120,11 +120,14 @@ class WalletConnector {
             bio: 'New to Slacker'
         };
     
+        const profileContent = document.getElementById('profileContent');
+    
         try {
             // Try to fetch existing profile
             try {
                 const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
                 console.log('Existing profile loaded:', response);
+                await this.loadProfileData();
             } catch (error) {
                 // If profile doesn't exist, create new one
                 if (error.message.includes('User profile not found')) {
@@ -133,13 +136,77 @@ class WalletConnector {
                         body: JSON.stringify(defaultProfile)
                     });
                     console.log('New profile created:', newProfile);
+                    await this.loadProfileData();
                 } else {
                     throw error;
                 }
             }
         } catch (error) {
             console.error('Error in createOrLoadProfile:', error);
+            ErrorHandler.showError(error.message, profileContent);
             throw error;
+        }
+    }
+
+    async loadProfileData() {
+        try {
+            const profileContent = document.getElementById('profileContent');
+            if (!profileContent) return;
+
+            LoadingState.show(profileContent);
+
+            // Fetch user profile
+            const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
+            console.log('Loaded Profile:', profile);
+
+            // Render profile information
+            profileContent.innerHTML = `
+                <div class="profile-header">
+                    <div class="profile-cover" style="background-image: url(${profile.bannerPicture || 'default-banner.jpg'})">
+                        ${profile.bannerPicture ? '' : '<span>Add Banner</span>'}
+                    </div>
+                    <div class="profile-info">
+                        <div class="profile-picture" style="background-image: url(${profile.profilePicture || 'default-profile.png'})">
+                            ${profile.profilePicture ? '' : '<span>Add Profile Picture</span>'}
+                        </div>
+                        <h2 class="profile-name">${profile.username}</h2>
+                        <p class="profile-wallet">${this.account}</p>
+                        <p class="profile-bio">${profile.bio || 'No bio yet'}</p>
+                        <div class="profile-actions">
+                            <button class="edit-profile-btn">Edit Profile</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Fetch and render user posts
+            const userPosts = await makeApiCall(`${API_ENDPOINTS.users}/${this.account.toLowerCase()}/posts`);
+            
+            const postsContainer = document.createElement('div');
+            postsContainer.className = 'posts-section';
+            postsContainer.innerHTML = '<h3>Your Posts</h3>';
+            
+            const postHandler = new PostHandler(this.account);
+            userPosts.forEach(post => {
+                const postElement = document.createElement('div');
+                postElement.innerHTML = postHandler.renderPost(post);
+                postsContainer.appendChild(postElement);
+            });
+
+            profileContent.appendChild(postsContainer);
+
+            // Setup edit profile button
+            const editProfileBtn = profileContent.querySelector('.edit-profile-btn');
+            if (editProfileBtn) {
+                editProfileBtn.addEventListener('click', () => this.showEditProfileForm(profile));
+            }
+
+        } catch (error) {
+            console.error('Error loading profile:', error);
+            ErrorHandler.showError('Failed to load profile: ' + error.message, 
+                document.getElementById('profileContent'));
+        } finally {
+            LoadingState.hide(document.getElementById('profileContent'));
         }
     }
     
