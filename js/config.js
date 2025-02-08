@@ -51,7 +51,7 @@ const handleApiResponse = async (response) => {
 
 const makeApiCall = async (endpoint, options = {}) => {
     try {
-        console.log('API Call Details:', {
+        console.log('Network Request:', {
             endpoint,
             method: options.method || 'GET',
             headers: {
@@ -62,7 +62,8 @@ const makeApiCall = async (endpoint, options = {}) => {
         });
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        // Increase timeout to 30 seconds
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
 
         const finalOptions = {
             ...DEFAULT_FETCH_OPTIONS,
@@ -74,14 +75,20 @@ const makeApiCall = async (endpoint, options = {}) => {
             signal: controller.signal
         };
 
+        const startTime = Date.now();
         const response = await fetch(endpoint, finalOptions);
+        const endTime = Date.now();
+
+        console.log('Network Response Time:', endTime - startTime, 'ms');
+
         clearTimeout(timeoutId);
         
         return await handleApiResponse(response);
     } catch (error) {
-        console.error('Detailed API Call Error:', {
+        console.error('Detailed Network Error:', {
             name: error.name,
             message: error.message,
+            code: error.code,
             stack: error.stack
         });
         throw error;
