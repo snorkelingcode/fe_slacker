@@ -36,10 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 reader.readAsDataURL(file);
             }
-            // Make them available globally
-                window.MediaHandler = MediaHandler;
-                window.ErrorHandler = ErrorHandler;
-                window.LoadingState = LoadingState;
         });
     });
 });
