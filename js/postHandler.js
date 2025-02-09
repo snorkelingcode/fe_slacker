@@ -121,71 +121,70 @@ class PostHandler {
         }
     }
 
-// Inside PostHandler class:
-async createPost(container) {
-    console.log('Current Wallet Address', this.walletAddress);
-    const content = container.querySelector('.post-input').value;
-    const mediaElement = container.querySelector('.media-preview-content');
+    async createPost(container) {
+        console.log('Current Wallet Address', this.walletAddress);
+        const content = container.querySelector('.post-input').value;
+        const mediaElement = container.querySelector('.media-preview-content');
 
-    if (!content && !mediaElement) {
-        throw new Error('Please add some content to your post');
+        if (!content && !mediaElement) {
+            throw new Error('Please add some content to your post');
+        }
+
+        try {
+            const postData = {
+                walletAddress: this.walletAddress.toLowerCase(),
+                content,
+                mediaUrl: mediaElement ? mediaElement.src : null,
+                mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null
+            };
+
+            // Send post to backend API
+            await makeApiCall(API_ENDPOINTS.posts, {
+                method: 'POST',
+                body: JSON.stringify(postData)
+            });
+
+            // Clear form
+            container.querySelector('.post-input').value = '';
+            container.querySelector('.media-preview').innerHTML = '';
+            container.querySelector('.media-input').value = '';
+
+            // Show success message
+            ErrorHandler.showSuccess('Post created successfully!', container);
+            
+            // Reload posts from database
+            await this.loadPosts();
+        } catch (error) {
+            throw new Error(`Failed to create post: ${error.message}`);
+        }
     }
 
-    try {
-        const postData = {
-            walletAddress: this.walletAddress.toLowerCase(),
-            content,
-            mediaUrl: mediaElement ? mediaElement.src : null,
-            mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null
-        };
+    async loadPosts() {
+        if (this.loadingPosts) return;
+        this.loadingPosts = true;
 
-        // Send post to backend API
-        await makeApiCall(API_ENDPOINTS.posts, {
-            method: 'POST',
-            body: JSON.stringify(postData)
-        });
+        try {
+            const postsContainer = document.querySelector('.posts-container');
+            if (!postsContainer) return;
 
-        // Clear form
-        container.querySelector('.post-input').value = '';
-        container.querySelector('.media-preview').innerHTML = '';
-        container.querySelector('.media-input').value = '';
+            LoadingState.show(postsContainer);
+            
+            // Fetch posts from backend API
+            const posts = await makeApiCall(API_ENDPOINTS.posts);
+            
+            postsContainer.innerHTML = posts.length > 0 
+                ? posts.map(post => this.renderPost(post)).join('')
+                : '<p class="no-posts">No posts yet</p>';
 
-        // Show success message
-        ErrorHandler.showSuccess('Post created successfully!', container);
-        
-        // Reload posts from database
-        await this.loadPosts();
-    } catch (error) {
-        throw new Error(`Failed to create post: ${error.message}`);
+            this.setupPostInteractions();
+        } catch (error) {
+            console.error('Error loading posts:', error);
+            ErrorHandler.showError('Failed to load posts', document.querySelector('.posts-container'));
+        } finally {
+            this.loadingPosts = false;
+            LoadingState.hide(document.querySelector('.posts-container'));
+        }
     }
-}
-
-async loadPosts() {
-    if (this.loadingPosts) return;
-    this.loadingPosts = true;
-
-    try {
-        const postsContainer = document.querySelector('.posts-container');
-        if (!postsContainer) return;
-
-        LoadingState.show(postsContainer);
-        
-        // Fetch posts from backend API
-        const posts = await makeApiCall(API_ENDPOINTS.posts);
-        
-        postsContainer.innerHTML = posts.length > 0 
-            ? posts.map(post => this.renderPost(post)).join('')
-            : '<p class="no-posts">No posts yet</p>';
-
-        this.setupPostInteractions();
-    } catch (error) {
-        console.error('Error loading posts:', error);
-        ErrorHandler.showError('Failed to load posts', document.querySelector('.posts-container'));
-    } finally {
-        this.loadingPosts = false;
-        LoadingState.hide(document.querySelector('.posts-container'));
-    }
-}
 
     async handleLike(postId) {
         try {
@@ -275,45 +274,54 @@ async loadPosts() {
         }
     }
 
-    async deletePost(postId) {
-        if (!postId) {
-            console.error('No post ID provided for deletion');
-            return;
-        }
-
-        if (!confirm('Are you sure you want to delete this post?')) {
-            return;
-        }
-
-        const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
-        if (!postElement) return;
-
-        try {
-            LoadingState.show(postElement);
-
-            // Make API call to delete the post
-            await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            // Remove the post from UI
-            postElement.remove();
-            
-            // Show success message
-            const postsContainer = document.querySelector('.posts-container');
-            if (postsContainer) {
-                ErrorHandler.showSuccess('Post deleted successfully!', postsContainer);
-            }
-
-        } catch (error) {
-            console.error('Error deleting post:', error);
-            ErrorHandler.showError(`Failed to delete post: ${error.message}`, postElement);
-        } finally {
-            LoadingState.hide(postElement);
-        }
+    renderPost(post) {
+        // Add null checks and default values
+        const isCurrentUser = post.author && post.author.walletAddress 
+            ? post.author.walletAddress.toLowerCase() === this.walletAddress.toLowerCase() 
+            : false;
+        
+        const formattedDate = post.createdAt 
+            ? new Date(post.createdAt).toLocaleString() 
+            : 'Invalid date';
+        
+        const authorAddress = post.author && post.author.walletAddress
+            ? post.author.walletAddress.substring(0, 6) 
+            : 'Unknown';
+        
+        return `
+            <div class="post" data-post-id="${post.id}">
+                <div class="post-header">
+                    <div class="post-meta">
+                        <span class="post-author">${authorAddress}...</span>
+                        <span class="post-timestamp">${formattedDate}</span>
+                    </div>
+                    ${isCurrentUser ? `
+                        <button class="delete-post-btn" onclick="event.stopPropagation(); window.postHandler.deletePost('${post.id}')">
+                            Delete
+                        </button>
+                    ` : ''}
+                </div>
+                <div class="post-content">
+                    <p>${this.formatPostContent(post.content || '')}</p>
+                    ${post.mediaUrl ? `
+                        <div class="post-media-container">
+                            ${post.mediaType === 'video' 
+                                ? `<video src="${post.mediaUrl}" controls class="post-media"></video>`
+                                : `<img src="${post.mediaUrl}" alt="Post image" class="post-media">`
+                            }
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="post-interactions">
+                    <button class="interaction-btn like-btn" data-post-id="${post.id}">
+                        ❤️ ${post.likes ? post.likes.length : 0}
+                    </button>
+                    <button class="interaction-btn comment-btn" data-post-id="${post.id}">
+                        💬 ${post.comments ? post.comments.length : 0}
+                    </button>
+                </div>
+            </div>
+        `;
     }
 
     renderComments(comments = []) {
