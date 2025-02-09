@@ -3,6 +3,7 @@ const API_BASE_URL = 'https://be-slacker.vercel.app/api/';
 const API_ENDPOINTS = {
     posts: `${API_BASE_URL}posts`,
     users: `${API_BASE_URL}users`,
+    comments: (postId) => `${API_BASE_URL}posts/${postId}/comments`
 };
 
 const DEFAULT_FETCH_OPTIONS = {
