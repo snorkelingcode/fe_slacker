@@ -50,9 +50,17 @@ class FeedHandler {
                 ? posts.map(post => this.postHandler.renderPost(post)).join('')
                 : '<p class="no-posts">No posts yet</p>';
 
-            // Add event listeners for post interactions
-            this.setupPostInteractions(posts);
-            
+            // Add event listeners for post interactions directly
+            document.querySelectorAll('.comment-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    console.log('Comment button clicked in feed.js');
+                    const post = e.target.closest('.post');
+                    const postId = post.dataset.postId;
+                    console.log('Post ID:', postId);
+                    window.location.href = `comments.html?postId=${postId}`;
+                });
+            });
+
         } catch (error) {
             console.error('Error loading posts:', error);
             postsContainer.innerHTML = `
@@ -63,26 +71,6 @@ class FeedHandler {
         } finally {
             LoadingState.hide(postsContainer);
         }
-    }
-
-    setupPostInteractions(posts) {
-        // Setup delete buttons
-        document.querySelectorAll('.delete-post-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                const postId = e.target.closest('.post').dataset.postId;
-                await this.postHandler.deletePost(postId);
-                await this.loadPosts(); // Reload posts after deletion
-            });
-        });
-
-        // Setup like buttons
-        document.querySelectorAll('.like-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                const postId = e.target.closest('.post').dataset.postId;
-                await this.postHandler.handleLike(postId);
-                await this.loadPosts(); // Reload posts after liking
-            });
-        });
     }
 
     signOut() {
