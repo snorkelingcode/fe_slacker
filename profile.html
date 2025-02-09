@@ -17,17 +17,24 @@
         </div>
     </nav>
     <main>
-        <div class="wallet-login" id="walletLogin">
-            <h2>Connect Your Wallet to Slacker</h2>
-            <div class="wallet-options">
-                <button class="wallet-button" id="metamaskButton">
-                    <img src="https://cdn.cdnlogo.com/logos/m/79/metamask.svg" alt="MetaMask">
-                    MetaMask
-                </button>
-            </div>
+        # Update this section in profile.html
+<div class="wallet-login" id="walletLogin">
+    <h2>Connect to Slacker</h2>
+    <div class="wallet-options">
+        <button class="wallet-button" id="metamaskButton">
+            <img src="https://cdn.cdnlogo.com/logos/m/79/metamask.svg" alt="MetaMask">
+            Connect with MetaMask
+        </button>
+        <div class="divider">
+            <span>or</span>
         </div>
-        <div class="profile-container" id="profileContent" style="display: none;"></div>
-    </main>
+        <button class="guest-button" id="guestButton">
+            <span class="guest-icon">👤</span>
+            Continue as Guest
+        </button>
+    </div>
+</div>
+</main>
 
     <!-- Load scripts in the correct order -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.6.0/web3.min.js"></script>

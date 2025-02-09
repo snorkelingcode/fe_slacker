@@ -4,7 +4,6 @@ class WalletConnector {
         this.web3 = null;
         this.account = null;
         
-        // Hide both containers initially
         const walletLogin = document.getElementById('walletLogin');
         const profileContent = document.getElementById('profileContent');
         if (walletLogin) walletLogin.style.display = 'none';
@@ -16,6 +15,7 @@ class WalletConnector {
 
     setupEventListeners() {
         const metamaskButton = document.getElementById('metamaskButton');
+        const guestButton = document.getElementById('guestButton');
         const signOutButton = document.getElementById('signOutButton');
         
         if (metamaskButton) {
@@ -29,20 +29,56 @@ class WalletConnector {
             });
         }
 
+        if (guestButton) {
+            guestButton.addEventListener('click', async () => {
+                LoadingState.show(guestButton);
+                try {
+                    await this.connectAsGuest();
+                } finally {
+                    LoadingState.hide(guestButton);
+                }
+            });
+        }
+
         if (signOutButton) {
             signOutButton.addEventListener('click', () => this.signOut());
         }
+    }
 
-        if (typeof window.ethereum !== 'undefined') {
-            window.ethereum.on('accountsChanged', async (accounts) => {
-                if (accounts.length === 0) {
-                    this.signOut();
-                } else {
-                    this.account = accounts[0];
-                    SessionManager.setWalletAddress(this.account);
-                    await this.loadProfileData();
-                }
-            });
+    async connectAsGuest() {
+        try {
+            // Generate a random guest address
+            const randomBytes = new Uint8Array(20);
+            window.crypto.getRandomValues(randomBytes);
+            const guestAddress = '0x' + Array.from(randomBytes)
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+
+            this.account = guestAddress;
+            SessionManager.setWalletAddress(this.account);
+
+            // Create guest profile
+            const guestProfile = {
+                walletAddress: this.account,
+                username: `Guest_${this.account.substring(2, 6)}`,
+                bio: 'Browsing as a guest'
+            };
+
+            try {
+                await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                    method: 'POST',
+                    body: JSON.stringify(guestProfile)
+                });
+
+                // Redirect to feed page
+                window.location.href = 'index.html';
+            } catch (error) {
+                console.error('Error creating guest profile:', error);
+                ErrorHandler.showError('Failed to create guest profile', document.getElementById('walletLogin'));
+            }
+        } catch (error) {
+            console.error('Error connecting as guest:', error);
+            ErrorHandler.showError('Failed to connect as guest', document.getElementById('walletLogin'));
         }
     }
 
