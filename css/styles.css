@@ -335,18 +335,18 @@ main {
 
 /* Post Styles */
 .post {
-    background: white;
+    background-color: white;
     border-radius: 8px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
     margin-bottom: 1rem;
-    padding: 1rem;
 }
 
 .post-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .post-meta {
@@ -358,12 +358,13 @@ main {
 }
 
 .post-content {
-    margin: 0.5rem 0;
+    margin-bottom: 1rem;
 }
 
 .post-content p {
-    margin: 0;
-    line-height: 1.4;
+    margin-bottom: 1rem;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .post-media-container {
@@ -380,14 +381,10 @@ main {
 }
 
 .post-footer {
-    padding: 0.5rem 1rem;
+    padding-top: 1rem;
     border-top: 1px solid #e4e6eb;
-}
-
-.post-interactions {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
+    color: #65676b;
+    font-size: 0.9rem;
 }
 
 /* Modal Styles */
@@ -585,16 +582,18 @@ main {
 
 .delete-post-btn {
     padding: 0.25rem 0.5rem;
+    background-color: #1877f2;
+    color: white;
+    font-weight: 300;
     border: none;
-    background: none;
-    color: #dc3545;
-    font-size: 0.8rem;
+    border-radius: 6px;
     cursor: pointer;
-    border-radius: 4px;
+    transition: background-color 0.2s;
+    font-size: .5rem;
 }
 
 .delete-post-btn:hover {
-    background-color: #ffebee;
+    background-color: #166fe5;
 }
 
 .post-button {
@@ -619,20 +618,17 @@ main {
 /* For like and comment buttons */
 .interaction-btn {
     padding: 0.5rem 1rem;
+    background-color: #1877f2;
+    color: white;
     border: none;
-    background: none;
-    color: #65676b;
-    font-size: 0.9rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
     border-radius: 6px;
+    cursor: pointer;
     transition: background-color 0.2s;
+    margin-right: 0.5rem;
 }
 
 .interaction-btn:hover {
-    background-color: #f0f2f5;
+    background-color: #166fe5;
 }
 
 /* For feed post creation box */
@@ -663,27 +659,11 @@ main {
 
 .post-actions {
     display: flex;
-    gap: 1rem;
-    margin-top: 0.5rem;
-}
-
-.action-btn {
-    color: #65676b;
-    font-size: 0.9rem;
-    text-decoration: none;
-    display: flex;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: space-between;
+    padding-top: 0.5rem;
+    padding-bottom: 0rem;
 }
-
-.action-btn:hover {
-    text-decoration: none;
-}
-
-.like-count, .comment-count {
-    cursor: pointer;
-}
-
 .loading {
     text-align: center;
     padding: 2rem;
@@ -719,92 +699,4 @@ main {
     right: 1rem;
     z-index: 1000;
     max-width: 400px;
-}
-.interaction-btn:hover {
-    background-color: #166fe5;
-}
-
-/* Comment section styles */
-.comment-section {
-    margin-top: 0.5rem;
-}
-
-.comment-count {
-    color: #65676b;
-    font-size: 0.9rem;
-    margin-bottom: 0.5rem;
-}
-
-.comment-input-container {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-}
-
-.comment-input {
-    flex: 1;
-    padding: 0.5rem;
-    border: 1px solid #e4e6eb;
-    border-radius: 20px;
-    resize: none;
-    min-height: 36px;
-    font-family: inherit;
-    font-size: 0.9rem;
-}
-
-.comment-input:focus {
-    outline: none;
-    border-color: #1877f2;
-}
-
-.post-comment-btn {
-    padding: 0.5rem 1rem;
-    background-color: #1877f2;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    height: 36px;
-    min-width: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-
-.post-comment-btn:disabled {
-    background-color: #e4e6eb;
-    cursor: not-allowed;
-}
-
-.post-comment-btn:hover {
-    background-color: #166fe5;
-}
-
-.comments-list {
-    margin-top: 1rem;
-}
-
-.comment {
-    padding: 0.5rem;
-    margin-bottom: 0.5rem;
-    background-color: #f0f2f5;
-    border-radius: 8px;
-}
-
-.comment-author {
-    font-weight: bold;
-    font-size: 0.9rem;
-    color: #1c1e21;
-}
-
-.comment-content {
-    margin: 0.25rem 0;
-    font-size: 0.9rem;
-}
-
-.comment-timestamp {
-    font-size: 0.8rem;
-    color: #65676b;
 }
