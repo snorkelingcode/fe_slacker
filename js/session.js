@@ -15,6 +15,27 @@ class SessionManager {
         }
         return address;
     }
+    //track burner account expiration
+    static setBurnerAccount(address) {
+        this.setWalletAddress(address);
+        localStorage.setItem(this.ACCOUNT_TYPE_KEY, this.BURNER_ACCOUNT_TYPE);
+        // Set expiration to 24 hours from now
+        localStorage.setItem('burnerExpiration', 
+            new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        );
+    }
+    
+    static checkBurnerExpiration() {
+        const expiration = localStorage.getItem('burnerExpiration');
+        if (expiration) {
+            const expirationDate = new Date(expiration);
+            if (expirationDate < new Date()) {
+                this.clearSession();
+                return false;
+            }
+        }
+        return true;
+    }
 
     static isConnected() {
         return !!this.getWalletAddress();
