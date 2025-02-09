@@ -311,7 +311,6 @@ class PostHandler {
                             }
                         </div>
                     ` : ''}
-                </div>
                 <div class="post-interactions">
                     <button class="interaction-btn like-btn" data-post-id="${post.id}">
                         ❤️ ${post.likes ? post.likes.length : 0}
@@ -359,7 +358,7 @@ class PostHandler {
                 await this.deletePost(postId);
             });
         });
-
+    
         // Like buttons
         document.querySelectorAll('.like-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
@@ -367,7 +366,7 @@ class PostHandler {
                 await this.handleLike(postId);
             });
         });
-
+    
         // Post comment buttons
         document.querySelectorAll('.post-comment-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
@@ -390,27 +389,33 @@ class PostHandler {
                 }
             });
         });
-
+    
         // Allow posting comments with Enter key
         document.querySelectorAll('.comment-input').forEach(input => {
-            input.addEventListener('keypress', async (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    const post = e.target.closest('.post');
-                    const postId = post.dataset.postId;
-                    const comment = input.value.trim();
-                    
-                    if (comment) {
-                        const button = post.querySelector('.post-comment-btn');
-                        button.disabled = true;
-                        try {
-                            await this.handleComment(postId, comment);
-                            input.value = '';
-                        } catch (error) {
-                            console.error('Error posting comment:', error);
-                            ErrorHandler.showError('Failed to post comment', post);
-                        } finally {
-                            button.disabled = false;
+            input.addEventListener('keydown', async (e) => {
+                if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                        // Allow shift+enter for new line
+                        return;
+                    } else {
+                        // Enter without shift posts the comment
+                        e.preventDefault();
+                        const post = e.target.closest('.post');
+                        const postId = post.dataset.postId;
+                        const comment = input.value.trim();
+                        
+                        if (comment) {
+                            const button = post.querySelector('.post-comment-btn');
+                            button.disabled = true;
+                            try {
+                                await this.handleComment(postId, comment);
+                                input.value = '';
+                            } catch (error) {
+                                console.error('Error posting comment:', error);
+                                ErrorHandler.showError('Failed to post comment', post);
+                            } finally {
+                                button.disabled = false;
+                            }
                         }
                     }
                 }
@@ -418,7 +423,6 @@ class PostHandler {
         });
     }
 }
-
 // Make postHandler instance globally available for the onclick handler
 window.postHandler = null;
 

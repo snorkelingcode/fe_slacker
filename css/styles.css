@@ -706,9 +706,7 @@ main {
 
 /* Comment section styles */
 .comment-section {
-    margin-top: 1rem;
-    border-top: 1px solid #e4e6eb;
-    padding-top: 1rem;
+    margin-top: 0.5rem;
 }
 
 .comment-count {
@@ -748,6 +746,16 @@ main {
     cursor: pointer;
     font-size: 0.9rem;
     height: 36px;
+    min-width: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.post-comment-btn:disabled {
+    background-color: #e4e6eb;
+    cursor: not-allowed;
 }
 
 .post-comment-btn:hover {
