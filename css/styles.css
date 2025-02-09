@@ -335,10 +335,9 @@ main {
 
 /* Post Styles */
 .post {
-    background-color: white;
+    background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 1.5rem;
     margin-bottom: 1rem;
 }
 
@@ -358,7 +357,8 @@ main {
 }
 
 .post-content {
-    margin-bottom: 1rem;
+    padding: 1rem;
+    padding-bottom: 0.5rem;
 }
 
 .post-content p {
@@ -381,10 +381,14 @@ main {
 }
 
 .post-footer {
-    padding-top: 1rem;
+    padding: 0.5rem 1rem;
     border-top: 1px solid #e4e6eb;
-    color: #65676b;
-    font-size: 0.9rem;
+}
+
+.post-interactions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
 }
 
 /* Modal Styles */
@@ -618,17 +622,20 @@ main {
 /* For like and comment buttons */
 .interaction-btn {
     padding: 0.5rem 1rem;
-    background-color: #1877f2;
-    color: white;
     border: none;
-    border-radius: 6px;
+    background: none;
+    color: #65676b;
+    font-size: 0.9rem;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 6px;
     transition: background-color 0.2s;
-    margin-right: 0.5rem;
 }
 
 .interaction-btn:hover {
-    background-color: #166fe5;
+    background-color: #f0f2f5;
 }
 
 /* For feed post creation box */
