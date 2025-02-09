@@ -359,12 +359,12 @@ async loadPosts() {
             });
         });
 
-        // Comment buttons
+        // Comment buttons - now redirects to comments page
         document.querySelectorAll('.comment-btn').forEach(button => {
             button.addEventListener('click', (e) => {
-                const post = e.target.closest('.post');
-                const commentSection = post.querySelector('.comment-section');
-                commentSection.style.display = commentSection.style.display === 'none' ? 'block' : 'none';
+                const postId = e.target.closest('.post').dataset.postId;
+                // Redirect to comments page with the specific post ID
+                window.location.href = `comments.html?postId=${postId}`;
             });
         });
 
