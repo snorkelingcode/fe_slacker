@@ -33,41 +33,54 @@ class FeedHandler {
     }
 
     async loadPosts() {
-        const posts = [];
-        // Get all posts from all users
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('posts_')) {
-                const userPosts = JSON.parse(localStorage.getItem(key)) || [];
-                posts.push(...userPosts);
-            }
-        }
-
-        // Sort posts by timestamp
-        posts.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-        // Render posts
         const postsContainer = document.querySelector('.posts-container');
-        postsContainer.innerHTML = posts.map(post => this.postHandler.renderPost(post)).join('');
+        if (!postsContainer) return;
 
-        // Add event listeners for post interactions
-        this.setupPostInteractions(posts);
+        try {
+            LoadingState.show(postsContainer);
+            
+            // Fetch posts from API
+            const posts = await makeApiCall(API_ENDPOINTS.posts);
+            
+            // Sort posts by timestamp
+            posts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            // Render posts
+            postsContainer.innerHTML = posts.length > 0 
+                ? posts.map(post => this.postHandler.renderPost(post)).join('')
+                : '<p class="no-posts">No posts yet</p>';
+
+            // Add event listeners for post interactions
+            this.setupPostInteractions(posts);
+            
+        } catch (error) {
+            console.error('Error loading posts:', error);
+            postsContainer.innerHTML = `
+                <div class="error-message">
+                    Failed to load posts. ${error.message}
+                    <button class="retry-btn" onclick="window.location.reload()">Retry</button>
+                </div>`;
+        } finally {
+            LoadingState.hide(postsContainer);
+        }
     }
 
     setupPostInteractions(posts) {
         // Setup delete buttons
         document.querySelectorAll('.delete-post-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
+            button.addEventListener('click', async (e) => {
                 const postId = e.target.closest('.post').dataset.postId;
-                this.postHandler.deletePost(postId);
+                await this.postHandler.deletePost(postId);
+                await this.loadPosts(); // Reload posts after deletion
             });
         });
 
-        // Setup like and comment buttons
-        document.querySelectorAll('.interaction-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                // This will be implemented when we add backend support
-                e.preventDefault();
+        // Setup like buttons
+        document.querySelectorAll('.like-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const postId = e.target.closest('.post').dataset.postId;
+                await this.postHandler.handleLike(postId);
+                await this.loadPosts(); // Reload posts after liking
             });
         });
     }

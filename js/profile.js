@@ -3,6 +3,13 @@ class WalletConnector {
         console.log('WalletConnector initializing...');
         this.web3 = null;
         this.account = null;
+        
+        // Hide both containers initially
+        const walletLogin = document.getElementById('walletLogin');
+        const profileContent = document.getElementById('profileContent');
+        if (walletLogin) walletLogin.style.display = 'none';
+        if (profileContent) profileContent.style.display = 'none';
+        
         this.setupEventListeners();
         this.checkExistingConnection();
     }
@@ -49,7 +56,6 @@ class WalletConnector {
                     if (accounts.length > 0 && accounts[0].toLowerCase() === this.account.toLowerCase()) {
                         this.web3 = new Web3(window.ethereum);
                         await this.loadProfileData();
-                        document.getElementById('walletLogin').style.display = 'none';
                         document.getElementById('profileContent').style.display = 'block';
                         document.getElementById('signOutButton').style.display = 'block';
                     } else {
@@ -61,6 +67,8 @@ class WalletConnector {
                     SessionManager.clearSession();
                     this.showLoginForm();
                 }
+            } else {
+                this.showLoginForm();
             }
         } else {
             this.showLoginForm();
