@@ -316,11 +316,17 @@ class PostHandler {
                     <button class="interaction-btn like-btn" data-post-id="${post.id}">
                         ❤️ ${post.likes ? post.likes.length : 0}
                     </button>
-                    <button class="interaction-btn comment-btn" data-post-id="${post.id}">
-                        💬 ${post.comments ? post.comments.length : 0}
-                    </button>
+                    <div class="comment-section">
+                        <div class="comment-count">
+                            💬 ${post.comments ? post.comments.length : 0} Comments
+                        </div>
+                        <div class="comment-input-container">
+                            <textarea class="comment-input" placeholder="Write a comment..."></textarea>
+                            <button class="post-comment-btn" data-post-id="${post.id}">Post</button>
+                        </div>
+                        ${this.renderComments(post.comments)}
+                    </div>
                 </div>
-            </div>
         `;
     }
 
@@ -362,26 +368,51 @@ class PostHandler {
             });
         });
 
-        // Comment buttons
-        document.querySelectorAll('.comment-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const post = e.target.closest('.post');
-                const commentSection = post.querySelector('.comment-section');
-                commentSection.style.display = commentSection.style.display === 'none' ? 'block' : 'none';
-            });
-        });
-
         // Post comment buttons
         document.querySelectorAll('.post-comment-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
                 const post = e.target.closest('.post');
-                const postId = post.dataset.postId;
+                const postId = button.dataset.postId;
                 const commentInput = post.querySelector('.comment-input');
                 const comment = commentInput.value.trim();
                 
                 if (comment) {
-                    await this.handleComment(postId, comment);
-                    commentInput.value = '';
+                    button.disabled = true;
+                    try {
+                        await this.handleComment(postId, comment);
+                        commentInput.value = '';
+                    } catch (error) {
+                        console.error('Error posting comment:', error);
+                        ErrorHandler.showError('Failed to post comment', post);
+                    } finally {
+                        button.disabled = false;
+                    }
+                }
+            });
+        });
+
+        // Allow posting comments with Enter key
+        document.querySelectorAll('.comment-input').forEach(input => {
+            input.addEventListener('keypress', async (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    const post = e.target.closest('.post');
+                    const postId = post.dataset.postId;
+                    const comment = input.value.trim();
+                    
+                    if (comment) {
+                        const button = post.querySelector('.post-comment-btn');
+                        button.disabled = true;
+                        try {
+                            await this.handleComment(postId, comment);
+                            input.value = '';
+                        } catch (error) {
+                            console.error('Error posting comment:', error);
+                            ErrorHandler.showError('Failed to post comment', post);
+                        } finally {
+                            button.disabled = false;
+                        }
+                    }
                 }
             });
         });
