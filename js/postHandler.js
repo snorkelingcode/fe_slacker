@@ -235,70 +235,85 @@ async loadPosts() {
     }
 
     async deletePost(postId) {
-        if (!confirm('Are you sure you want to delete this post?')) return;
+        if (!postId) {
+            console.error('No post ID provided for deletion');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to delete this post?')) {
+            return;
+        }
+
+        const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
+        if (!postElement) return;
 
         try {
+            LoadingState.show(postElement);
+
+            // Make API call to delete the post
             await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
                 method: 'DELETE',
-                body: JSON.stringify({ walletAddress: this.walletAddress })
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
 
-            await this.loadPosts();
-            if (typeof ErrorHandler !== 'undefined') {
-                ErrorHandler.showSuccess('Post deleted successfully!', document.querySelector('.posts-container'));
+            // Remove the post from UI
+            postElement.remove();
+            
+            // Show success message
+            const postsContainer = document.querySelector('.posts-container');
+            if (postsContainer) {
+                ErrorHandler.showSuccess('Post deleted successfully!', postsContainer);
             }
+
         } catch (error) {
             console.error('Error deleting post:', error);
-            if (typeof ErrorHandler !== 'undefined') {
-                ErrorHandler.showError('Failed to delete post', document.querySelector('.posts-container'));
-            }
+            ErrorHandler.showError(`Failed to delete post: ${error.message}`, postElement);
+        } finally {
+            LoadingState.hide(postElement);
         }
     }
 
-    renderPost(post) {
-        // Add null checks and default values
-        const isCurrentUser = post.author && post.author.walletAddress 
-            ? post.author.walletAddress.toLowerCase() === this.walletAddress.toLowerCase() 
-            : false;
-        
-        const formattedDate = post.createdAt 
-            ? new Date(post.createdAt).toLocaleString() 
-            : 'Invalid date';
-        
-        const authorAddress = post.author 
-            ? post.author.walletAddress.substring(0, 6) 
-            : 'Unknown';
-        
-        return `
-            <div class="post" data-post-id="${post.id}">
-                <div class="post-header">
-                    <div class="post-meta">
-                        <span class="post-author">${authorAddress}...</span>
-                        <span class="post-timestamp">${formattedDate}</span>
-                    </div>
-                    ${isCurrentUser ? `<button class="delete-post-btn">Delete</button>` : ''}
-                </div>
-                <div class="post-content">
-                    <p>${this.formatPostContent(post.content)}</p>
-                    ${post.mediaUrl ? `
-                        <div class="post-media-container">
-                            ${post.mediaType === 'video' 
-                                ? `<video src="${post.mediaUrl}" controls class="post-media"></video>`
-                                : `<img src="${post.mediaUrl}" alt="Post image" class="post-media">`
-                            }
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="post-interactions">
-                    <button class="interaction-btn like-btn" data-post-id="${post.id}">
-                        ❤️ ${post.likes ? post.likes.length : 0}
-                    </button>
-                    <button class="interaction-btn comment-btn" data-post-id="${post.id}">
-                        💬 ${post.comments ? post.comments.length : 0}
-                    </button>
-                </div>
-            </div>
-        `;
+    async deletePost(postId) {
+        if (!postId) {
+            console.error('No post ID provided for deletion');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to delete this post?')) {
+            return;
+        }
+
+        const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
+        if (!postElement) return;
+
+        try {
+            LoadingState.show(postElement);
+
+            // Make API call to delete the post
+            await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            // Remove the post from UI
+            postElement.remove();
+            
+            // Show success message
+            const postsContainer = document.querySelector('.posts-container');
+            if (postsContainer) {
+                ErrorHandler.showSuccess('Post deleted successfully!', postsContainer);
+            }
+
+        } catch (error) {
+            console.error('Error deleting post:', error);
+            ErrorHandler.showError(`Failed to delete post: ${error.message}`, postElement);
+        } finally {
+            LoadingState.hide(postElement);
+        }
     }
 
     renderComments(comments = []) {
@@ -364,3 +379,14 @@ async loadPosts() {
         });
     }
 }
+
+// Make postHandler instance globally available for the onclick handler
+window.postHandler = null;
+
+// Set up the global postHandler when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    const walletAddress = SessionManager.getWalletAddress();
+    if (walletAddress) {
+        window.postHandler = new PostHandler(walletAddress);
+    }
+});
