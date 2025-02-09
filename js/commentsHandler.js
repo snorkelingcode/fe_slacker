@@ -1,6 +1,5 @@
 class CommentsHandler {
     constructor() {
-        this.init();
         this.postId = new URLSearchParams(window.location.search).get('postId');
         
         // Add detailed logging for wallet address
@@ -8,7 +7,7 @@ class CommentsHandler {
         console.log('CommentsHandler - Wallet Address:', this.walletAddress);
         console.log('CommentsHandler - Wallet Address Type:', typeof this.walletAddress);
         
-        this.postHandler = null;
+        this.postHandler = new PostHandler(this.walletAddress);
     }
 
     init() {
@@ -23,7 +22,6 @@ class CommentsHandler {
             signOutButton.addEventListener('click', () => this.signOut());
         }
 
-        this.postHandler = new PostHandler(this.walletAddress);
         this.loadPost();
     }
 
@@ -41,47 +39,6 @@ class CommentsHandler {
             console.log('Post Author Wallet Address:', post.author.walletAddress);
             console.log('Current User Wallet Address:', this.walletAddress);
 
-            this.renderPage(post);
-            this.setupInteractions(post);
-        } catch (error) {
-            console.error('Error loading post:', error);
-            ErrorHandler.showError('Failed to load post', document.querySelector('.comments-page-container'));
-        }
-    }
-
-    // ... rest of the existing code remains the same
-}class CommentsHandler {
-    constructor() {
-        this.init();
-        this.postId = new URLSearchParams(window.location.search).get('postId');
-        this.walletAddress = SessionManager.getWalletAddress();
-        this.postHandler = null;
-    }
-
-    init() {
-        if (!SessionManager.isConnected()) {
-            window.location.href = 'profile.html';
-            return;
-        }
-
-        const signOutButton = document.getElementById('signOutButton');
-        if (signOutButton) {
-            signOutButton.style.display = 'block';
-            signOutButton.addEventListener('click', () => this.signOut());
-        }
-
-        this.postHandler = new PostHandler(this.walletAddress);
-        this.loadPost();
-    }
-
-    async loadPost() {
-        if (!this.postId) {
-            window.location.href = 'index.html';
-            return;
-        }
-
-        try {
-            const post = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}`);
             this.renderPage(post);
             this.setupInteractions(post);
         } catch (error) {
@@ -272,5 +229,6 @@ class CommentsHandler {
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new CommentsHandler();
+    const commentsHandler = new CommentsHandler();
+    commentsHandler.init();
 });
