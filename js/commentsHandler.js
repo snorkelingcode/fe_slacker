@@ -1,12 +1,8 @@
 class CommentsHandler {
     constructor() {
         this.postId = new URLSearchParams(window.location.search).get('postId');
-        
-        // Add detailed logging for wallet address
         this.walletAddress = SessionManager.getWalletAddress();
         console.log('CommentsHandler - Wallet Address:', this.walletAddress);
-        console.log('CommentsHandler - Wallet Address Type:', typeof this.walletAddress);
-        
         this.postHandler = new PostHandler(this.walletAddress);
     }
 
@@ -32,13 +28,15 @@ class CommentsHandler {
         }
 
         try {
-            const post = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}`);
+            // Use the posts endpoint to get all posts
+            const posts = await makeApiCall(API_ENDPOINTS.posts);
+            const post = posts.find(p => p.id === this.postId);
             
-            // Additional logging to verify post and wallet address
-            console.log('Loaded Post:', post);
-            console.log('Post Author Wallet Address:', post.author.walletAddress);
-            console.log('Current User Wallet Address:', this.walletAddress);
+            if (!post) {
+                throw new Error('Post not found');
+            }
 
+            console.log('Loaded Post:', post);
             this.renderPage(post);
             this.setupInteractions(post);
         } catch (error) {
@@ -153,20 +151,19 @@ class CommentsHandler {
             .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>');
     }
 
-    setupInteractions(post) {
+    async setupInteractions(post) {
         // Like button handler
         const likeButton = document.querySelector('.like-btn');
         if (likeButton) {
-            likeButton.addEventListener('click', async (e) => {
-                const postId = e.target.dataset.postId;
+            likeButton.addEventListener('click', async () => {
                 try {
-                    const response = await makeApiCall(`${API_ENDPOINTS.posts}/${postId}/like`, {
+                    const response = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/like`, {
                         method: 'POST',
                         body: JSON.stringify({ walletAddress: this.walletAddress })
                     });
                     
                     // Update like count
-                    e.target.innerHTML = `❤️ ${response.likes.length}`;
+                    likeButton.innerHTML = `❤️ ${response.likes.length}`;
                 } catch (error) {
                     console.error('Error liking post:', error);
                     ErrorHandler.showError('Failed to like post', document.querySelector('.comments-page-container'));
@@ -177,47 +174,40 @@ class CommentsHandler {
         // Comment submission handler
         const postButton = document.querySelector('.post-button');
         const postInput = document.querySelector('.post-input');
-        const mediaInput = document.querySelector('.media-input');
-        const mediaPreview = document.querySelector('.media-preview');
 
-        postButton.addEventListener('click', async () => {
-            const content = postInput.value.trim();
-            const mediaElement = mediaPreview.querySelector('.media-preview-content');
+        if (postButton && postInput) {
+            postButton.addEventListener('click', async () => {
+                const content = postInput.value.trim();
+                if (!content) {
+                    ErrorHandler.showError('Please add a comment', document.querySelector('.comments-page-container'));
+                    return;
+                }
 
-            if (!content && !mediaElement) {
-                ErrorHandler.showError('Please add a comment', document.querySelector('.comments-page-container'));
-                return;
-            }
+                try {
+                    const comment = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/comment`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            walletAddress: this.walletAddress,
+                            content
+                        })
+                    });
 
-            try {
-                const commentData = {
-                    walletAddress: this.walletAddress,
-                    content,
-                    mediaUrl: mediaElement ? mediaElement.src : null,
-                    mediaType: mediaElement ? (mediaElement.tagName.toLowerCase() === 'video' ? 'video' : 'image') : null
-                };
+                    // Add new comment to list
+                    const commentsList = document.querySelector('.comments-list');
+                    commentsList.insertAdjacentHTML('afterbegin', this.renderComments([comment]));
+                    
+                    // Clear input
+                    postInput.value = '';
 
-                const comment = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/comment`, {
-                    method: 'POST',
-                    body: JSON.stringify(commentData)
-                });
-
-                // Add new comment to list
-                const commentsList = document.querySelector('.comments-list');
-                commentsList.insertAdjacentHTML('afterbegin', this.renderComments([comment]));
-                
-                // Clear input and media preview
-                postInput.value = '';
-                mediaPreview.innerHTML = '';
-                mediaInput.value = '';
-
-                ErrorHandler.showSuccess('Comment posted successfully!', document.querySelector('.comments-page-container'));
-            } catch (error) {
-                console.error('Error posting comment:', error);
-                ErrorHandler.showError('Failed to post comment', document.querySelector('.comments-page-container'));
-            }
-        });
+                    ErrorHandler.showSuccess('Comment posted successfully!', document.querySelector('.comments-page-container'));
+                } catch (error) {
+                    console.error('Error posting comment:', error);
+                    ErrorHandler.showError('Failed to post comment', document.querySelector('.comments-page-container'));
+                }
+            });
+        }
     }
+
 
     signOut() {
         if (confirm('Are you sure you want to sign out?')) {
