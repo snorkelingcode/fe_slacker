@@ -700,3 +700,37 @@ main {
     z-index: 1000;
     max-width: 400px;
 }
+
+.comments-page-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.single-post-view {
+    margin-bottom: 2rem;
+}
+
+.comments-list {
+    margin-top: 2rem;
+}
+
+.comment {
+    background-color: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+    color: #65676b;
+    font-size: 0.9rem;
+}
+
+.comment-content {
+    color: #1c1e21;
+}
