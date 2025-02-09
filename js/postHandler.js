@@ -362,7 +362,23 @@ async loadPosts() {
         // Comment buttons - now redirects to comments page
         document.querySelectorAll('.comment-btn').forEach(button => {
             button.addEventListener('click', (e) => {
-                const postId = e.target.closest('.post').dataset.postId;
+                console.log('Comment button clicked');
+                const post = e.target.closest('.post');
+                console.log('Post element:', post);
+                
+                if (!post) {
+                    console.error('Could not find closest post element');
+                    return;
+                }
+                
+                const postId = post.dataset.postId;
+                console.log('Post ID:', postId);
+                
+                if (!postId) {
+                    console.error('No post ID found on the post element');
+                    return;
+                }
+                
                 // Redirect to comments page with the specific post ID
                 window.location.href = `comments.html?postId=${postId}`;
             });
