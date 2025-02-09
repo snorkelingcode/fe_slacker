@@ -121,15 +121,17 @@ class WalletConnector {
         }
     }
 
+    // Update this function in profile.js
     async createOrLoadProfile() {
         const defaultProfile = {
             walletAddress: this.account.toLowerCase(),
             username: `User_${this.account.substring(2, 8)}`,
             bio: 'New to Slacker'
+            // Removed accountType since it's no longer in the schema
         };
-    
+
         const profileContent = document.getElementById('profileContent');
-    
+
         try {
             // Try to fetch existing profile
             try {
@@ -155,7 +157,7 @@ class WalletConnector {
             throw error;
         }
     }
-
+    
     async loadProfileData() {
         try {
             const profileContent = document.getElementById('profileContent');
