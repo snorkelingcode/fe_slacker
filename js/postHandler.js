@@ -312,19 +312,13 @@ class PostHandler {
                         </div>
                     ` : ''}
                 </div>
-                <div class="post-footer">
-                    <div class="post-interactions">
-                        <button class="interaction-btn like-btn" data-post-id="${post.id}">
-                            ❤️ ${post.likes ? post.likes.length : 0}
-                        </button>
-                        <button 
-                            class="interaction-btn comment-btn" 
-                            data-post-id="${post.id}"
-                            onclick="window.location.href='comments.html?postId=${post.id}'"
-                        >
-                            💬 ${post.comments ? post.comments.length : 0} Comments
-                        </button>
-                    </div>
+                <div class="post-actions">
+                    <span class="action-btn like-count">
+                        ❤️ ${post.likes ? post.likes.length : 0}
+                    </span>
+                    <a href="comments.html?postId=${post.id}" class="action-btn comment-count">
+                        💬 ${post.comments ? post.comments.length : 0} Comments
+                    </a>
                 </div>
             </div>`;
     }
