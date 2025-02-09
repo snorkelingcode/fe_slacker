@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comments - Slacker</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="logo">
+            Slacker
+        </div>
+        <div class="nav-buttons">
+            <a href="index.html" class="nav-button">Feed</a>
+            <a href="profile.html" class="nav-button">Profile</a>
+            <a href="messages.html" class="nav-button">Messages</a>
+            <button id="signOutButton" class="nav-button sign-out-btn" style="display: none;">Sign Out</button>
+        </div>
+    </nav>
+    <main>
+        <div class="comments-page-container">
+            <div class="back-button">
+                <button onclick="window.history.back()" class="nav-button">← Back</button>
+            </div>
+            <div id="originalPost"></div>
+            <div id="commentsSection"></div>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.6.0/web3.min.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/session.js"></script>
+    <script src="js/commentsHandler.js"></script>
+</body>
+</html>
