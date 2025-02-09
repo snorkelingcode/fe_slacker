@@ -94,3 +94,6 @@ const makeApiCall = async (endpoint, options = {}) => {
         throw error;
     }
 };
+
+// Ensure makeApiCall is globally available
+window.makeApiCall = makeApiCall;
