@@ -3,6 +3,8 @@ class WalletConnector {
         console.log('WalletConnector initializing...');
         this.web3 = null;
         this.account = null;
+        this.isConnecting = false;
+        this.connectionTimeout = null;
         
         const walletLogin = document.getElementById('walletLogin');
         const profileContent = document.getElementById('profileContent');
@@ -20,10 +22,20 @@ class WalletConnector {
         
         if (metamaskButton) {
             metamaskButton.addEventListener('click', async () => {
+                if (this.isConnecting) {
+                    console.log('Connection already in progress...');
+                    return;
+                }
+                
                 LoadingState.show(metamaskButton);
                 try {
+                    this.isConnecting = true;
                     await this.connectMetaMask();
+                } catch (error) {
+                    console.error('MetaMask connection error:', error);
+                    ErrorHandler.showError(error.message, document.getElementById('walletLogin'));
                 } finally {
+                    this.isConnecting = false;
                     LoadingState.hide(metamaskButton);
                 }
             });
@@ -119,7 +131,6 @@ class WalletConnector {
 
     async connectMetaMask() {
         console.log('Attempting to connect MetaMask...');
-        const profileContent = document.getElementById('profileContent');
 
         if (typeof window.ethereum === 'undefined') {
             ErrorHandler.showError('Please install MetaMask to continue!', document.getElementById('walletLogin'));
@@ -130,9 +141,26 @@ class WalletConnector {
         }
 
         try {
-            const accounts = await window.ethereum.request({ 
-                method: 'eth_requestAccounts' 
+            // Clear any existing connection timeout
+            if (this.connectionTimeout) {
+                clearTimeout(this.connectionTimeout);
+            }
+
+            // Set a new timeout for the connection attempt
+            const timeoutPromise = new Promise((_, reject) => {
+                this.connectionTimeout = setTimeout(() => {
+                    reject(new Error('MetaMask connection timed out. Please try again.'));
+                }, 30000); // 30 second timeout
             });
+
+            // Race between the connection attempt and the timeout
+            const accounts = await Promise.race([
+                window.ethereum.request({ method: 'eth_requestAccounts' }),
+                timeoutPromise
+            ]);
+
+            // Clear the timeout if connection was successful
+            clearTimeout(this.connectionTimeout);
             
             this.account = accounts[0];
             console.log('Connected account:', this.account);
@@ -142,18 +170,22 @@ class WalletConnector {
 
             try {
                 await this.createOrLoadProfile();
-                
-                // Redirect to index.html (feed page)
                 window.location.href = 'index.html';
             } catch (error) {
                 console.error('Error handling profile:', error);
-                ErrorHandler.showError(error.message, profileContent);
+                ErrorHandler.showError(error.message, document.getElementById('profileContent'));
             }
 
         } catch (error) {
-            console.error("MetaMask connection error:", error);
-            ErrorHandler.showError('Failed to connect to MetaMask: ' + error.message, 
-                document.getElementById('walletLogin'));
+            // Check for specific MetaMask errors
+            if (error.code === -32002) {
+                ErrorHandler.showError('MetaMask connection pending. Please open MetaMask and connect.', 
+                    document.getElementById('walletLogin'));
+            } else {
+                ErrorHandler.showError('Failed to connect to MetaMask: ' + error.message, 
+                    document.getElementById('walletLogin'));
+            }
+            throw error;
         }
     }
 
