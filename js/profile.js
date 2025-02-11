@@ -306,15 +306,15 @@ class WalletConnector {
                 console.error('Profile content element not found');
                 return;
             }
-
+    
             LoadingState.show(profileContent);
-
+    
             // Fetch user profile
             const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
             console.log('Loaded Profile:', profile);
-
+    
             const isGuest = localStorage.getItem('isGuest') === 'true';
-
+    
             // Render profile information with guest-specific modifications
             profileContent.innerHTML = `
                 <div class="profile-header">
@@ -341,7 +341,7 @@ class WalletConnector {
                     </div>
                 </div>
             `;
-
+    
             // Fetch and render user posts
             const userPosts = await makeApiCall(`${API_ENDPOINTS.users}/${this.account.toLowerCase()}/posts`);
             console.log('User posts loaded:', userPosts);
@@ -352,18 +352,74 @@ class WalletConnector {
             
             const postHandler = new PostHandler(this.account);
             if (userPosts.length > 0) {
-                userPosts.forEach(post => {
-                    const postElement = document.createElement('div');
-                    postElement.innerHTML = postHandler.renderPost(post);
-                    postsContainer.appendChild(postElement);
-                });
+                const postsHTML = userPosts.map(post => postHandler.renderPost(post)).join('');
+                postsContainer.innerHTML += `<div class="posts-container">${postsHTML}</div>`;
             } else {
                 postsContainer.innerHTML += '<p class="no-posts">No posts yet</p>';
             }
-
+    
             profileContent.appendChild(postsContainer);
-
-            // Setup button listeners
+    
+            // Add event listeners for post interactions
+            document.querySelectorAll('.like-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const postId = button.closest('.post').dataset.postId;
+                    try {
+                        const response = await makeApiCall(`${API_ENDPOINTS.posts}/${postId}/like`, {
+                            method: 'POST',
+                            body: JSON.stringify({ walletAddress: this.account })
+                        });
+                        
+                        // Update like count
+                        button.innerHTML = `❤️ ${response.likes.length}`;
+                    } catch (error) {
+                        console.error('Error liking post:', error);
+                        ErrorHandler.showError('Failed to like post', button.closest('.post'));
+                    }
+                });
+            });
+    
+            // Add delete button handlers
+            document.querySelectorAll('.delete-post-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        const post = button.closest('.post');
+                        const postId = post.dataset.postId;
+                        try {
+                            await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
+                                method: 'DELETE'
+                            });
+                            
+                            // Remove the post from the UI
+                            post.remove();
+                            ErrorHandler.showSuccess('Post deleted successfully!', postsContainer);
+                        } catch (error) {
+                            console.error('Error deleting post:', error);
+                            ErrorHandler.showError('Failed to delete post', post);
+                        }
+                    }
+                });
+            });
+    
+            // Add comment button handlers
+            document.querySelectorAll('.comment-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const post = e.target.closest('.post');
+                    const postId = post.dataset.postId;
+                    window.location.href = `comments.html?postId=${postId}`;
+                });
+            });
+    
+            // Setup edit profile handlers for non-guest users
             if (!isGuest) {
                 const editProfileBtn = profileContent.querySelector('.edit-profile-btn');
                 if (editProfileBtn) {
@@ -377,7 +433,7 @@ class WalletConnector {
                     });
                 }
             }
-
+    
         } catch (error) {
             console.error('Error loading profile:', error);
             ErrorHandler.showError('Failed to load profile: ' + error.message, 
@@ -386,7 +442,7 @@ class WalletConnector {
             LoadingState.hide(document.getElementById('profileContent'));
         }
     }
-
+    
     showEditProfileForm(profile) {
         console.log('=== Showing Edit Profile Form ===', profile);
         const modal = document.createElement('div');
@@ -412,21 +468,21 @@ class WalletConnector {
                 </form>
             </div>
         `;
-
+    
         document.body.appendChild(modal);
-
+    
         const closeModal = () => {
             modal.remove();
         };
-
+    
         modal.querySelector('.close-modal').addEventListener('click', closeModal);
         modal.querySelector('.cancel-edit-btn').addEventListener('click', closeModal);
-
+    
         modal.querySelector('#editProfileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = modal.querySelector('#username').value;
             const bio = modal.querySelector('#bio').value;
-
+    
             try {
                 await this.updateProfile({ username, bio });
                 closeModal();
@@ -436,7 +492,7 @@ class WalletConnector {
             }
         });
     }
-
+    
     async updateProfile(profileData) {
         console.log('=== Updating Profile ===', profileData);
         try {
@@ -462,25 +518,12 @@ class WalletConnector {
             LoadingState.hide(document.querySelector('.edit-profile-form'));
         }
     }
-
-    signOut() {
-        console.log('=== Signing Out ===');
-        if (confirm('Are you sure you want to sign out?')) {
-            console.log('Clearing session...');
-            SessionManager.clearSession();
-            window.location.href = 'profile.html';
-        }
-    }
-}
-
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM loaded, initializing WalletConnector...');
-    new WalletConnector();
-});
-
-
-
+}    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOM loaded, initializing WalletConnector...');
+        new WalletConnector();
+    });
 
 
 
