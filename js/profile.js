@@ -1,26 +1,45 @@
 class WalletConnector {
     constructor() {
-        console.log('WalletConnector initializing...');
+        console.log('=== WalletConnector Constructor Start ===');
         this.web3 = null;
         this.account = null;
         this.isConnecting = false;
         this.connectionTimeout = null;
         
-        const walletLogin = document.getElementById('walletLogin');
-        const profileContent = document.getElementById('profileContent');
-        if (walletLogin) walletLogin.style.display = 'none';
-        if (profileContent) profileContent.style.display = 'none';
-        
+        console.log('Checking for MetaMask:', typeof window.ethereum !== 'undefined');
+
+        // Clear any existing elements in profileContent
+        this.initializeUI();
         this.setupEventListeners();
         this.checkExistingConnection();
+        console.log('=== WalletConnector Constructor End ===');
+    }
+
+    initializeUI() {
+        console.log('Initializing UI elements...');
+        const walletLogin = document.getElementById('walletLogin');
+        const profileContent = document.getElementById('profileContent');
+        const signOutButton = document.getElementById('signOutButton');
+
+        console.log('Initial elements found:', {
+            walletLogin: !!walletLogin,
+            profileContent: !!profileContent,
+            signOutButton: !!signOutButton
+        });
+
+        if (walletLogin) walletLogin.style.display = 'none';
+        if (profileContent) profileContent.style.display = 'none';
+        if (signOutButton) signOutButton.style.display = 'none';
     }
 
     setupEventListeners() {
+        console.log('Setting up event listeners...');
         const metamaskButton = document.getElementById('metamaskButton');
         const guestButton = document.getElementById('guestButton');
         const signOutButton = document.getElementById('signOutButton');
         
         if (metamaskButton) {
+            console.log('Adding MetaMask button listener');
             metamaskButton.addEventListener('click', async () => {
                 if (this.isConnecting) {
                     console.log('Connection already in progress...');
@@ -42,10 +61,14 @@ class WalletConnector {
         }
 
         if (guestButton) {
+            console.log('Adding guest button listener');
             guestButton.addEventListener('click', async () => {
                 LoadingState.show(guestButton);
                 try {
                     await this.connectAsGuest();
+                } catch (error) {
+                    console.error('Guest connection error:', error);
+                    ErrorHandler.showError(error.message, document.getElementById('walletLogin'));
                 } finally {
                     LoadingState.hide(guestButton);
                 }
@@ -53,11 +76,85 @@ class WalletConnector {
         }
 
         if (signOutButton) {
+            console.log('Adding sign out button listener');
             signOutButton.addEventListener('click', () => this.signOut());
         }
     }
 
+    async checkExistingConnection() {
+        console.log('=== Checking Existing Connection ===');
+        console.log('SessionManager connected:', SessionManager.isConnected());
+        const storedAddress = SessionManager.getWalletAddress();
+        console.log('Stored wallet address:', storedAddress);
+        
+        if (SessionManager.isConnected()) {
+            this.account = storedAddress;
+            console.log('Found existing account:', this.account);
+            
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    console.log('Current MetaMask accounts:', accounts);
+                    
+                    if (accounts.length > 0 && accounts[0].toLowerCase() === this.account.toLowerCase()) {
+                        console.log('MetaMask account matches stored account');
+                        this.web3 = new Web3(window.ethereum);
+                        await this.loadProfileData();
+                        document.getElementById('profileContent').style.display = 'block';
+                        document.getElementById('signOutButton').style.display = 'block';
+                    } else {
+                        console.log('MetaMask account mismatch or not found');
+                        SessionManager.clearSession();
+                        this.showLoginForm();
+                    }
+                } catch (error) {
+                    console.error('Error checking wallet connection:', error);
+                    SessionManager.clearSession();
+                    this.showLoginForm();
+                }
+            } else {
+                // Handle guest user case
+                if (this.account && this.account.startsWith('0x')) {
+                    console.log('Guest user detected, loading profile');
+                    try {
+                        await this.loadProfileData();
+                        document.getElementById('profileContent').style.display = 'block';
+                        document.getElementById('signOutButton').style.display = 'block';
+                    } catch (error) {
+                        console.error('Error loading guest profile:', error);
+                        SessionManager.clearSession();
+                        this.showLoginForm();
+                    }
+                } else {
+                    console.log('No valid account found, showing login form');
+                    this.showLoginForm();
+                }
+            }
+        } else {
+            console.log('No existing connection found, showing login form');
+            this.showLoginForm();
+        }
+    }
+
+    showLoginForm() {
+        console.log('=== Showing Login Form ===');
+        const walletLogin = document.getElementById('walletLogin');
+        const profileContent = document.getElementById('profileContent');
+        const signOutButton = document.getElementById('signOutButton');
+
+        console.log('Elements found:', {
+            walletLogin: !!walletLogin,
+            profileContent: !!profileContent,
+            signOutButton: !!signOutButton
+        });
+
+        if (walletLogin) walletLogin.style.display = 'block';
+        if (profileContent) profileContent.style.display = 'none';
+        if (signOutButton) signOutButton.style.display = 'none';
+    }
+
     async connectAsGuest() {
+        console.log('=== Connecting as Guest ===');
         try {
             // Generate a random guest address
             const randomBytes = new Uint8Array(20);
@@ -66,6 +163,7 @@ class WalletConnector {
                 .map(b => b.toString(16).padStart(2, '0'))
                 .join('');
 
+            console.log('Generated guest address:', guestAddress);
             this.account = guestAddress;
             SessionManager.setWalletAddress(this.account);
 
@@ -76,11 +174,14 @@ class WalletConnector {
                 bio: 'Browsing as a guest'
             };
 
+            console.log('Creating guest profile:', guestProfile);
+
             try {
-                await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                     method: 'POST',
                     body: JSON.stringify(guestProfile)
                 });
+                console.log('Guest profile created:', response);
 
                 // Redirect to feed page
                 window.location.href = 'index.html';
@@ -89,48 +190,14 @@ class WalletConnector {
                 ErrorHandler.showError('Failed to create guest profile', document.getElementById('walletLogin'));
             }
         } catch (error) {
-            console.error('Error connecting as guest:', error);
+            console.error('Error in guest connection:', error);
             ErrorHandler.showError('Failed to connect as guest', document.getElementById('walletLogin'));
         }
     }
 
-    async checkExistingConnection() {
-        console.log('Checking existing connection...');
-        if (SessionManager.isConnected()) {
-            this.account = SessionManager.getWalletAddress();
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                    if (accounts.length > 0 && accounts[0].toLowerCase() === this.account.toLowerCase()) {
-                        this.web3 = new Web3(window.ethereum);
-                        await this.loadProfileData();
-                        document.getElementById('profileContent').style.display = 'block';
-                        document.getElementById('signOutButton').style.display = 'block';
-                    } else {
-                        SessionManager.clearSession();
-                        this.showLoginForm();
-                    }
-                } catch (error) {
-                    console.error('Error checking wallet connection:', error);
-                    SessionManager.clearSession();
-                    this.showLoginForm();
-                }
-            } else {
-                this.showLoginForm();
-            }
-        } else {
-            this.showLoginForm();
-        }
-    }
-
-    showLoginForm() {
-        document.getElementById('walletLogin').style.display = 'block';
-        document.getElementById('profileContent').style.display = 'none';
-        document.getElementById('signOutButton').style.display = 'none';
-    }
-
     async connectMetaMask() {
-        console.log('Attempting to connect MetaMask...');
+        console.log('=== Connecting MetaMask ===');
+        console.log('MetaMask available:', typeof window.ethereum !== 'undefined');
 
         if (typeof window.ethereum === 'undefined') {
             ErrorHandler.showError('Please install MetaMask to continue!', document.getElementById('walletLogin'));
@@ -141,35 +208,24 @@ class WalletConnector {
         }
 
         try {
-            // Clear any existing connection timeout
             if (this.connectionTimeout) {
                 clearTimeout(this.connectionTimeout);
             }
 
-            // Set a new timeout for the connection attempt
-            const timeoutPromise = new Promise((_, reject) => {
-                this.connectionTimeout = setTimeout(() => {
-                    reject(new Error('MetaMask connection timed out. Please try again.'));
-                }, 30000); // 30 second timeout
-            });
+            console.log('Requesting MetaMask accounts...');
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            console.log('MetaMask accounts received:', accounts);
 
-            // Race between the connection attempt and the timeout
-            const accounts = await Promise.race([
-                window.ethereum.request({ method: 'eth_requestAccounts' }),
-                timeoutPromise
-            ]);
-
-            // Clear the timeout if connection was successful
-            clearTimeout(this.connectionTimeout);
-            
             this.account = accounts[0];
-            console.log('Connected account:', this.account);
             this.web3 = new Web3(window.ethereum);
 
+            console.log('Setting wallet address in session:', this.account);
             SessionManager.setWalletAddress(this.account);
 
             try {
+                console.log('Creating/loading profile...');
                 await this.createOrLoadProfile();
+                console.log('Profile handled successfully, redirecting...');
                 window.location.href = 'index.html';
             } catch (error) {
                 console.error('Error handling profile:', error);
@@ -177,38 +233,43 @@ class WalletConnector {
             }
 
         } catch (error) {
-            // Check for specific MetaMask errors
+            console.error('MetaMask connection error:', error);
+            
             if (error.code === -32002) {
-                ErrorHandler.showError('MetaMask connection pending. Please open MetaMask and connect.', 
+                ErrorHandler.showError('Please check MetaMask for pending connection request', 
                     document.getElementById('walletLogin'));
             } else {
-                ErrorHandler.showError('Failed to connect to MetaMask: ' + error.message, 
+                ErrorHandler.showError('Failed to connect: ' + error.message, 
                     document.getElementById('walletLogin'));
             }
             throw error;
         }
     }
 
-    // Update this function in profile.js
     async createOrLoadProfile() {
+        console.log('=== Creating/Loading Profile ===');
+        console.log('Current account:', this.account);
+
         const defaultProfile = {
             walletAddress: this.account.toLowerCase(),
             username: `User_${this.account.substring(2, 8)}`,
             bio: 'New to Slacker'
-            // Removed accountType since it's no longer in the schema
         };
 
-        const profileContent = document.getElementById('profileContent');
+        console.log('Default profile:', defaultProfile);
 
         try {
             // Try to fetch existing profile
+            console.log('Attempting to fetch existing profile...');
             try {
                 const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
                 console.log('Existing profile loaded:', response);
                 await this.loadProfileData();
             } catch (error) {
+                console.log('Profile fetch error:', error);
                 // If profile doesn't exist, create new one
                 if (error.message.includes('User profile not found')) {
+                    console.log('Creating new profile...');
                     const newProfile = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                         method: 'POST',
                         body: JSON.stringify(defaultProfile)
@@ -221,15 +282,20 @@ class WalletConnector {
             }
         } catch (error) {
             console.error('Error in createOrLoadProfile:', error);
-            ErrorHandler.showError(error.message, profileContent);
             throw error;
         }
     }
-    
+
     async loadProfileData() {
+        console.log('=== Loading Profile Data ===');
+        console.log('Current account:', this.account);
+        
         try {
             const profileContent = document.getElementById('profileContent');
-            if (!profileContent) return;
+            if (!profileContent) {
+                console.error('Profile content element not found');
+                return;
+            }
 
             LoadingState.show(profileContent);
 
@@ -259,6 +325,7 @@ class WalletConnector {
 
             // Fetch and render user posts
             const userPosts = await makeApiCall(`${API_ENDPOINTS.users}/${this.account.toLowerCase()}/posts`);
+            console.log('User posts loaded:', userPosts);
             
             const postsContainer = document.createElement('div');
             postsContainer.className = 'posts-section';
@@ -287,32 +354,9 @@ class WalletConnector {
             LoadingState.hide(document.getElementById('profileContent'));
         }
     }
-    
-    async updateProfile(profileData) {
-        try {
-            LoadingState.show(document.querySelector('.edit-profile-form'));
-            
-            // Update profile in database
-            await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    ...profileData,
-                    walletAddress: this.account
-                })
-            });
-    
-            await this.loadProfileData();
-            ErrorHandler.showSuccess('Profile updated successfully!', document.getElementById('profileContent'));
-        } catch (error) {
-            console.error('Error updating profile:', error);
-            ErrorHandler.showError('Failed to update profile: ' + error.message, 
-                document.querySelector('.edit-profile-form'));
-        } finally {
-            LoadingState.hide(document.querySelector('.edit-profile-form'));
-        }
-    }
 
     showEditProfileForm(profile) {
+        console.log('=== Showing Edit Profile Form ===', profile);
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.style.display = 'block';
@@ -327,7 +371,7 @@ class WalletConnector {
                     </div>
                     <div class="form-group">
                         <label for="bio">Bio</label>
-                        <textarea id="bio" maxlength="500">${profile.bio}</textarea>
+                        <textarea id="bio" maxlength="500">${profile.bio || ''}</textarea>
                     </div>
                     <div class="form-buttons">
                         <button type="submit" class="save-profile-btn">Save Changes</button>
@@ -355,15 +399,44 @@ class WalletConnector {
                 await this.updateProfile({ username, bio });
                 closeModal();
             } catch (error) {
+                console.error('Error updating profile:', error);
                 ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
             }
         });
     }
 
+    async updateProfile(profileData) {
+        console.log('=== Updating Profile ===', profileData);
+        try {
+            LoadingState.show(document.querySelector('.edit-profile-form'));
+            
+            // Update profile in database
+            const updatedProfile = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    ...profileData,
+                    walletAddress: this.account
+                })
+            });
+            
+            console.log('Profile updated:', updatedProfile);
+            await this.loadProfileData();
+            ErrorHandler.showSuccess('Profile updated successfully!', document.getElementById('profileContent'));
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            ErrorHandler.showError('Failed to update profile: ' + error.message, 
+                document.querySelector('.edit-profile-form'));
+        } finally {
+            LoadingState.hide(document.querySelector('.edit-profile-form'));
+        }
+    }
+
     signOut() {
+        console.log('=== Signing Out ===');
         if (confirm('Are you sure you want to sign out?')) {
+            console.log('Clearing session...');
             SessionManager.clearSession();
-            window.location.reload();
+            window.location.href = 'profile.html';
         }
     }
 }
@@ -373,3 +446,18 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing WalletConnector...');
     new WalletConnector();
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
