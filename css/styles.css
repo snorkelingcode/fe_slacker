@@ -581,19 +581,19 @@ main {
 }
 
 .delete-post-btn {
-    padding: 0.25rem 0.5rem;
-    background-color: #1877f2;
+    padding: 0.5rem 1rem;
+    background-color: #dc3545;
     color: white;
-    font-weight: 300;
+    font-weight: 600;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     transition: background-color 0.2s;
-    font-size: .5rem;
+    font-size: 1rem;
 }
 
 .delete-post-btn:hover {
-    background-color: #166fe5;
+    background-color: #bb2d3b;
 }
 
 .post-button {
