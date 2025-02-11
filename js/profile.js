@@ -319,7 +319,7 @@ class WalletConnector {
             profileContent.innerHTML = `
                 <div class="profile-header">
                     <div class="profile-cover" style="background-color: #e4e6eb">
-                        ${isGuest ? '<span>Guest Profile</span>' : '<span>Add Banner</span>'}
+                        ${isGuest ? '<span></span>' : '<span>Add Banner</span>'}
                     </div>
                     <div class="profile-info">
                         <div class="profile-picture" style="background-color: #e4e6eb">
