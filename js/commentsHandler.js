@@ -45,21 +45,45 @@ class CommentsHandler {
             window.location.href = 'index.html';
             return;
         }
-
+    
         try {
+            console.log('Attempting to load post with ID:', this.postId);
+            
             // Use the specific post endpoint to fetch the post by ID
-            const post = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}`);
+            const response = await fetch(`${API_ENDPOINTS.posts}/${this.postId}`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+    
+            console.log('Fetch response:', response);
+    
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response text:', errorText);
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+    
+            const post = await response.json();
             
             if (!post) {
                 throw new Error('Post not found');
             }
-
+    
             console.log('Loaded Post:', post);
             this.renderPage(post);
             this.setupInteractions(post);
         } catch (error) {
-            console.error('Error loading post:', error);
-            ErrorHandler.showError('Failed to load post', document.querySelector('.comments-page-container'));
+            console.error('Detailed error loading post:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            });
+            
+            ErrorHandler.showError(`Failed to load post: ${error.message}`, 
+                document.querySelector('.comments-page-container') || document.body);
         }
     }
 
