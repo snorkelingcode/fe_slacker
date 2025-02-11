@@ -27,14 +27,19 @@ class CommentsHandler {
             window.location.href = 'index.html';
             return;
         }
-
+    
         try {
-            // Fetch specific post details
-            const response = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}`);
+            // Fetch all posts and find the specific one
+            const posts = await makeApiCall(API_ENDPOINTS.posts);
+            const post = posts.find(p => p.id === this.postId);
             
-            console.log('Loaded Post:', response);
-            this.renderPage(response);
-            this.setupInteractions(response);
+            if (!post) {
+                throw new Error('Post not found');
+            }
+    
+            console.log('Loaded Post:', post);
+            this.renderPage(post);
+            this.setupInteractions(post);
         } catch (error) {
             console.error('Error loading post:', error);
             ErrorHandler.showError('Failed to load post', document.querySelector('.comments-page-container'));
