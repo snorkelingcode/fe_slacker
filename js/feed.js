@@ -35,7 +35,7 @@ class FeedHandler {
     async loadPosts() {
         const postsContainer = document.querySelector('.posts-container');
         if (!postsContainer) return;
-
+    
         try {
             LoadingState.show(postsContainer);
             
@@ -49,7 +49,7 @@ class FeedHandler {
             postsContainer.innerHTML = posts.length > 0 
                 ? posts.map(post => this.postHandler.renderPost(post)).join('')
                 : '<p class="no-posts">No posts yet</p>';
-
+    
             // Add like button handlers
             document.querySelectorAll('.like-btn').forEach(button => {
                 button.addEventListener('click', async (e) => {
@@ -71,31 +71,44 @@ class FeedHandler {
                     }
                 });
             });
-
+    
+            // Add delete button handlers
+            document.querySelectorAll('.delete-post-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    if (confirm('Are you sure you want to delete this post?')) {
+                        const post = button.closest('.post');
+                        const postId = post.dataset.postId;
+                        try {
+                            await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
+                                method: 'DELETE'
+                            });
+                            
+                            // Remove the post from the UI
+                            post.remove();
+                            ErrorHandler.showSuccess('Post deleted successfully!', postsContainer);
+                        } catch (error) {
+                            console.error('Error deleting post:', error);
+                            ErrorHandler.showError('Failed to delete post', post);
+                        }
+                    }
+                });
+            });
+    
             // Add comment button handlers
             document.querySelectorAll('.comment-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    console.log('Comment button clicked');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
                     const post = e.target.closest('.post');
-                    console.log('Post element:', post);
-                    
-                    if (!post) {
-                        console.error('Could not find closest post element');
-                        return;
-                    }
-                    
                     const postId = post.dataset.postId;
-                    console.log('Post ID:', postId);
-                    
-                    if (!postId) {
-                        console.error('No post ID found on the post element');
-                        return;
-                    }
-                    
                     window.location.href = `comments.html?postId=${postId}`;
                 });
             });
-
+    
         } catch (error) {
             console.error('Error loading posts:', error);
             postsContainer.innerHTML = `
