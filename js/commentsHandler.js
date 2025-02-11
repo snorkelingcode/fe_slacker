@@ -2,7 +2,8 @@ class CommentsHandler {
     constructor() {
         this.postId = new URLSearchParams(window.location.search).get('postId');
         this.walletAddress = SessionManager.getWalletAddress();
-        console.log('CommentsHandler - Wallet Address:', this.walletAddress);
+        this.isGuest = localStorage.getItem('isGuest') === 'true';
+        console.log('CommentsHandler - Wallet Address:', this.walletAddress, 'Is Guest:', this.isGuest);
         this.postHandler = new PostHandler(this.walletAddress);
     }
 
@@ -28,17 +29,12 @@ class CommentsHandler {
         }
 
         try {
-            // Use the posts endpoint to get all posts
-            const posts = await makeApiCall(API_ENDPOINTS.posts);
-            const post = posts.find(p => p.id === this.postId);
+            // Fetch specific post details
+            const response = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}`);
             
-            if (!post) {
-                throw new Error('Post not found');
-            }
-
-            console.log('Loaded Post:', post);
-            this.renderPage(post);
-            this.setupInteractions(post);
+            console.log('Loaded Post:', response);
+            this.renderPage(response);
+            this.setupInteractions(response);
         } catch (error) {
             console.error('Error loading post:', error);
             ErrorHandler.showError('Failed to load post', document.querySelector('.comments-page-container'));
@@ -48,7 +44,6 @@ class CommentsHandler {
     renderPage(post) {
         const commentsPageContainer = document.querySelector('.comments-page-container');
         
-        // Create a container with only the specific post
         commentsPageContainer.innerHTML = `
             <div class="back-button">
                 <button onclick="window.history.back()" class="nav-button">← Back</button>
@@ -65,14 +60,14 @@ class CommentsHandler {
             <div id="commentsSection">
                 <h3>Comments</h3>
                 <div class="comments-list">
-                    ${this.renderComments(post.comments)}
+                    ${this.renderComments(post.comments || [])}
                 </div>
             </div>
         `;
 
         // Setup comment form interactions
         const commentContainer = document.getElementById('commentFormContainer');
-        this.postHandler.setupPostForm(commentContainer, true); // Pass true to indicate it's a comment form
+        this.postHandler.setupPostForm(commentContainer, true); 
     }
 
     renderOriginalPost(post) {
@@ -80,75 +75,69 @@ class CommentsHandler {
             <div class="post single-post" data-post-id="${post.id}">
                 <div class="post-header">
                     <div class="post-meta">
-                        <span class="post-author">${post.author.walletAddress.substring(0, 6)}...</span>
+                        <span class="post-author">${this.formatAuthor(post.author)}</span>
                         <span class="post-timestamp">${new Date(post.createdAt).toLocaleString()}</span>
                     </div>
-                    ${post.author.walletAddress.toLowerCase() === this.walletAddress.toLowerCase() ? `
-                        <button class="delete-post-btn">Delete</button>
+                    ${this.canDeletePost(post) ? `
+                        <button class="delete-post-btn" data-post-id="${post.id}">Delete</button>
                     ` : ''}
                 </div>
                 <div class="post-content">
                     <p>${this.formatPostContent(post.content || '')}</p>
-                    ${post.mediaUrl ? `
-                        <div class="post-media-container">
-                            ${post.mediaType === 'video' 
-                                ? `<video src="${post.mediaUrl}" controls class="post-media"></video>`
-                                : `<img src="${post.mediaUrl}" alt="Post image" class="post-media">`
-                            }
-                        </div>
-                    ` : ''}
+                    ${this.renderMedia(post)}
                 </div>
                 <div class="post-interactions">
                     <button class="interaction-btn like-btn" data-post-id="${post.id}">
                         ❤️ ${post.likes ? post.likes.length : 0}
                     </button>
+                    <button class="interaction-btn comment-btn" data-post-id="${post.id}">
+                        💬 ${post.comments ? post.comments.length : 0}
+                    </button>
                 </div>
-            </div>`;
-    }
-
-    renderCommentForm() {
-        return `
-            <div class="post-form comment-form">
-                <textarea class="post-input" placeholder="Write a comment..."></textarea>
-                <div class="post-actions">
-                    <div class="media-options">
-                        <label class="media-button">
-                            <input type="file" accept="image/*,video/*" hidden class="media-input">
-                            <span>Add Media</span>
-                        </label>
-                    </div>
-                    <button class="post-button">Post Comment</button>
-                </div>
-                <div class="media-preview"></div>
             </div>`;
     }
 
     renderComments(comments = []) {
         return comments.map(comment => `
-            <div class="comment">
+            <div class="comment" data-comment-id="${comment.id}">
                 <div class="comment-header">
-                    <span class="comment-author">${comment.author.walletAddress.substring(0, 6)}...</span>
+                    <span class="comment-author">${this.formatAuthor(comment.author)}</span>
                     <span class="comment-timestamp">${new Date(comment.createdAt).toLocaleString()}</span>
+                    ${this.canDeleteComment(comment) ? `
+                        <button class="delete-comment-btn" data-comment-id="${comment.id}">Delete</button>
+                    ` : ''}
                 </div>
                 <p class="comment-content">${this.formatPostContent(comment.content)}</p>
-                ${comment.mediaUrl ? `
-                    <div class="comment-media">
-                        ${comment.mediaType === 'video' 
-                            ? `<video src="${comment.mediaUrl}" controls></video>`
-                            : `<img src="${comment.mediaUrl}" alt="Comment image">`
-                        }
-                    </div>
-                ` : ''}
+                ${this.renderMedia(comment)}
             </div>
         `).join('');
     }
 
-    formatPostContent(content) {
-        if (!content) return '';
-        return content
-            .replace(/\n/g, '<br>')
-            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>')
-            .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>');
+    formatAuthor(author) {
+        return author ? 
+            `${author.username || author.walletAddress.substring(0, 6)}...` 
+            : 'Anonymous';
+    }
+
+    renderMedia(item) {
+        return item.mediaUrl ? `
+            <div class="post-media-container">
+                ${item.mediaType === 'video' 
+                    ? `<video src="${item.mediaUrl}" controls class="post-media"></video>`
+                    : `<img src="${item.mediaUrl}" alt="Media" class="post-media">`
+                }
+            </div>
+        ` : '';
+    }
+
+    canDeletePost(post) {
+        if (!this.walletAddress) return false;
+        return post.author.walletAddress.toLowerCase() === this.walletAddress.toLowerCase();
+    }
+
+    canDeleteComment(comment) {
+        if (!this.walletAddress) return false;
+        return comment.author.walletAddress.toLowerCase() === this.walletAddress.toLowerCase();
     }
 
     async setupInteractions(post) {
@@ -171,6 +160,59 @@ class CommentsHandler {
             });
         }
 
+        // Delete post button handler
+        const deletePostBtn = document.querySelector('.delete-post-btn');
+        if (deletePostBtn) {
+            deletePostBtn.addEventListener('click', async () => {
+                if (!confirm('Are you sure you want to delete this post?')) return;
+
+                try {
+                    LoadingState.show(deletePostBtn);
+                    
+                    await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}`, {
+                        method: 'DELETE',
+                        body: JSON.stringify({ walletAddress: this.walletAddress })
+                    });
+                    
+                    // Redirect to feed after deletion
+                    window.location.href = 'index.html';
+                } catch (error) {
+                    console.error('Error deleting post:', error);
+                    ErrorHandler.showError('Failed to delete post', document.querySelector('.comments-page-container'));
+                } finally {
+                    LoadingState.hide(deletePostBtn);
+                }
+            });
+        }
+
+        // Delete comment buttons
+        document.querySelectorAll('.delete-comment-btn').forEach(deleteCommentBtn => {
+            deleteCommentBtn.addEventListener('click', async () => {
+                if (!confirm('Are you sure you want to delete this comment?')) return;
+
+                const commentId = deleteCommentBtn.dataset.commentId;
+                const commentElement = deleteCommentBtn.closest('.comment');
+
+                try {
+                    LoadingState.show(deleteCommentBtn);
+                    
+                    await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/comments/${commentId}`, {
+                        method: 'DELETE',
+                        body: JSON.stringify({ walletAddress: this.walletAddress })
+                    });
+                    
+                    // Remove comment from UI
+                    commentElement.remove();
+                    ErrorHandler.showSuccess('Comment deleted successfully', document.querySelector('.comments-page-container'));
+                } catch (error) {
+                    console.error('Error deleting comment:', error);
+                    ErrorHandler.showError('Failed to delete comment', document.querySelector('.comments-page-container'));
+                } finally {
+                    LoadingState.hide(deleteCommentBtn);
+                }
+            });
+        });
+
         // Comment submission handler
         const postButton = document.querySelector('.post-button');
         const postInput = document.querySelector('.post-input');
@@ -178,42 +220,65 @@ class CommentsHandler {
         if (postButton && postInput) {
             postButton.addEventListener('click', async () => {
                 const content = postInput.value.trim();
-                if (!content) {
-                    ErrorHandler.showError('Please add a comment', document.querySelector('.comments-page-container'));
+                const mediaPreview = document.querySelector('.media-preview-content');
+
+                if (!content && !mediaPreview) {
+                    ErrorHandler.showError('Please add a comment or media', document.querySelector('.comments-page-container'));
                     return;
                 }
 
                 try {
-                    const comment = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/comment`, {
+                    LoadingState.show(postButton);
+
+                    const commentData = {
+                        walletAddress: this.walletAddress,
+                        content,
+                        mediaUrl: mediaPreview ? mediaPreview.src : null,
+                        mediaType: mediaPreview 
+                            ? (mediaPreview.tagName.toLowerCase() === 'video' ? 'video' : 'image') 
+                            : null
+                    };
+
+                    const updatedPost = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/comment`, {
                         method: 'POST',
-                        body: JSON.stringify({
-                            walletAddress: this.walletAddress,
-                            content
-                        })
+                        body: JSON.stringify(commentData)
                     });
 
-                    // Add new comment to list
+                    // Re-render the entire comments section
                     const commentsList = document.querySelector('.comments-list');
-                    commentsList.insertAdjacentHTML('afterbegin', this.renderComments([comment]));
-                    
-                    // Clear input
+                    commentsList.innerHTML = this.renderComments(updatedPost.comments);
+
+                    // Clear input and media preview
                     postInput.value = '';
+                    document.querySelector('.media-preview').innerHTML = '';
 
                     ErrorHandler.showSuccess('Comment posted successfully!', document.querySelector('.comments-page-container'));
+                    
+                    // Setup interactions for new comments
+                    this.setupInteractions(updatedPost);
                 } catch (error) {
                     console.error('Error posting comment:', error);
                     ErrorHandler.showError('Failed to post comment', document.querySelector('.comments-page-container'));
+                } finally {
+                    LoadingState.hide(postButton);
                 }
             });
         }
     }
-
 
     signOut() {
         if (confirm('Are you sure you want to sign out?')) {
             SessionManager.clearSession();
             window.location.href = 'profile.html';
         }
+    }
+
+    formatPostContent(content) {
+        if (!content) return '';
+        return content
+            .replace(/\n/g, '<br>')
+            .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>')
+            .replace(/#(\w+)/g, '<span class="hashtag">#$1</span>');
     }
 }
 
