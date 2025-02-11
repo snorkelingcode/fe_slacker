@@ -187,27 +187,30 @@ async loadPosts() {
     }
 }
 
-    async handleLike(postId) {
-        try {
-            const button = document.querySelector(`.like-btn[data-post-id="${postId}"]`);
-            if (button) button.disabled = true;
+async handleLike(postId) {
+    try {
+        const button = document.querySelector(`.like-btn[data-post-id="${postId}"]`);
+        if (button) button.disabled = true;
 
-            await makeApiCall(`${API_ENDPOINTS.posts}/${postId}/like`, {
-                method: 'POST',
-                body: JSON.stringify({ walletAddress: this.walletAddress })
-            });
-
-            await this.loadPosts();
-        } catch (error) {
-            console.error('Error liking post:', error);
-            if (typeof ErrorHandler !== 'undefined') {
-                ErrorHandler.showError('Failed to like post', document.querySelector('.posts-container'));
-            }
-        } finally {
-            const button = document.querySelector(`.like-btn[data-post-id="${postId}"]`);
-            if (button) button.disabled = false;
+        const response = await makeApiCall(`${API_ENDPOINTS.posts}/${postId}/like`, {
+            method: 'POST',
+            body: JSON.stringify({ walletAddress: this.walletAddress })
+        });
+        
+        // Update like count directly without reloading all posts
+        if (button) {
+            button.innerHTML = `❤️ ${response.likes ? response.likes.length : 0}`;
+            button.disabled = false;
         }
+
+    } catch (error) {
+        console.error('Error liking post:', error);
+        if (typeof ErrorHandler !== 'undefined') {
+            ErrorHandler.showError('Failed to like post', document.querySelector('.posts-container'));
+        }
+        if (button) button.disabled = false;
     }
+}
 
     async handleComment(postId, comment) {
         try {
@@ -350,15 +353,23 @@ async loadPosts() {
                 await this.deletePost(postId);
             });
         });
-
+    
         // Like buttons
         document.querySelectorAll('.like-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                const postId = e.target.closest('.post').dataset.postId;
-                await this.handleLike(postId);
-            });
+            // Remove any existing click listeners
+            button.replaceWith(button.cloneNode(true));
+            // Get the fresh button reference after replacement
+            const newButton = document.querySelector(`.like-btn[data-post-id="${button.dataset.postId}"]`);
+            if (newButton) {
+                newButton.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const postId = e.target.closest('.post').dataset.postId;
+                    await this.handleLike(postId);
+                });
+            }
         });
-
+    
         // Comment buttons - now redirects to comments page
         document.querySelectorAll('.comment-btn').forEach(button => {
             button.addEventListener('click', (e) => {
