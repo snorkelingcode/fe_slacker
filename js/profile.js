@@ -164,6 +164,11 @@ class WalletConnector {
     async connectAsGuest() {
         console.log('=== Connecting as Guest ===');
         try {
+            // Check if user can create new guest account
+            if (!SessionManager.canCreateGuestAccount()) {
+                throw new Error('You have reached the maximum number of guest accounts. Please wait 24 hours or use MetaMask to connect.');
+            }
+
             // Generate a random guest address
             const randomBytes = new Uint8Array(20);
             window.crypto.getRandomValues(randomBytes);
@@ -173,13 +178,18 @@ class WalletConnector {
 
             console.log('Generated guest address:', guestAddress);
             this.account = guestAddress;
-            SessionManager.setWalletAddress(this.account);
 
-            // Create guest profile
+            // Set wallet address with guest flag
+            SessionManager.setWalletAddress(this.account, true);
+
+            // Create guest profile with identifier
+            const guestId = SessionManager.getGuestIdentifier();
             const guestProfile = {
                 walletAddress: this.account,
                 username: `Guest_${this.account.substring(2, 6)}`,
-                bio: 'Browsing as a guest'
+                bio: 'Browsing as a guest',
+                guestId: guestId, // Add guest identifier to profile
+                accountType: 'guest'
             };
 
             console.log('Creating guest profile:', guestProfile);
@@ -191,6 +201,9 @@ class WalletConnector {
                 });
                 console.log('Guest profile created:', response);
 
+                // Track this guest account
+                SessionManager.trackGuestAccount(this.account);
+
                 // Redirect to feed page
                 window.location.href = 'index.html';
             } catch (error) {
@@ -199,7 +212,7 @@ class WalletConnector {
             }
         } catch (error) {
             console.error('Error in guest connection:', error);
-            ErrorHandler.showError('Failed to connect as guest', document.getElementById('walletLogin'));
+            ErrorHandler.showError(error.message, document.getElementById('walletLogin'));
         }
     }
 
