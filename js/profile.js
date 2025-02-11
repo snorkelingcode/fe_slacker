@@ -4,9 +4,8 @@ class WalletConnector {
         this.web3 = null;
         this.account = null;
         this.isConnecting = false;
-        this.connectionAttempts = 0;
-        this.maxAttempts = 3;
         
+        // Hide initial UI elements
         const walletLogin = document.getElementById('walletLogin');
         const profileContent = document.getElementById('profileContent');
         if (walletLogin) walletLogin.style.display = 'none';
@@ -93,13 +92,26 @@ class WalletConnector {
         console.log('=== Checking Existing Connection ===');
         console.log('SessionManager connected:', SessionManager.isConnected());
         const storedAddress = SessionManager.getWalletAddress();
-        console.log('Stored wallet address:', storedAddress);
+        const isGuest = localStorage.getItem('isGuest') === 'true';
+        console.log('Stored wallet address:', storedAddress, 'Is Guest:', isGuest);
         
         if (SessionManager.isConnected()) {
             this.account = storedAddress;
             console.log('Found existing account:', this.account);
             
-            if (typeof window.ethereum !== 'undefined') {
+            if (isGuest) {
+                // Handle guest user
+                console.log('Guest user detected, loading profile');
+                try {
+                    await this.loadProfileData();
+                    document.getElementById('profileContent').style.display = 'block';
+                    document.getElementById('signOutButton').style.display = 'block';
+                } catch (error) {
+                    console.error('Error loading guest profile:', error);
+                    SessionManager.clearSession();
+                    this.showLoginForm();
+                }
+            } else if (typeof window.ethereum !== 'undefined') {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
                     console.log('Current MetaMask accounts:', accounts);
@@ -121,22 +133,9 @@ class WalletConnector {
                     this.showLoginForm();
                 }
             } else {
-                // Handle guest user case
-                if (this.account && this.account.startsWith('0x')) {
-                    console.log('Guest user detected, loading profile');
-                    try {
-                        await this.loadProfileData();
-                        document.getElementById('profileContent').style.display = 'block';
-                        document.getElementById('signOutButton').style.display = 'block';
-                    } catch (error) {
-                        console.error('Error loading guest profile:', error);
-                        SessionManager.clearSession();
-                        this.showLoginForm();
-                    }
-                } else {
-                    console.log('No valid account found, showing login form');
-                    this.showLoginForm();
-                }
+                console.log('No MetaMask found, showing login form');
+                SessionManager.clearSession();
+                this.showLoginForm();
             }
         } else {
             console.log('No existing connection found, showing login form');
@@ -149,12 +148,6 @@ class WalletConnector {
         const walletLogin = document.getElementById('walletLogin');
         const profileContent = document.getElementById('profileContent');
         const signOutButton = document.getElementById('signOutButton');
-
-        console.log('Elements found:', {
-            walletLogin: !!walletLogin,
-            profileContent: !!profileContent,
-            signOutButton: !!signOutButton
-        });
 
         if (walletLogin) walletLogin.style.display = 'block';
         if (profileContent) profileContent.style.display = 'none';
@@ -320,22 +313,31 @@ class WalletConnector {
             const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
             console.log('Loaded Profile:', profile);
 
-            // Render profile information
+            const isGuest = localStorage.getItem('isGuest') === 'true';
+
+            // Render profile information with guest-specific modifications
             profileContent.innerHTML = `
                 <div class="profile-header">
-                    <div class="profile-cover" style="background-image: url(${profile.bannerPicture || 'default-banner.jpg'})">
-                        ${profile.bannerPicture ? '' : '<span>Add Banner</span>'}
+                    <div class="profile-cover" style="background-color: #e4e6eb">
+                        ${isGuest ? '<span>Guest Profile</span>' : '<span>Add Banner</span>'}
                     </div>
                     <div class="profile-info">
-                        <div class="profile-picture" style="background-image: url(${profile.profilePicture || 'default-profile.png'})">
-                            ${profile.profilePicture ? '' : '<span>Add Profile Picture</span>'}
+                        <div class="profile-picture" style="background-color: #e4e6eb">
+                            ${isGuest ? '👤' : '<span>Add Profile Picture</span>'}
                         </div>
                         <h2 class="profile-name">${profile.username}</h2>
                         <p class="profile-wallet">${this.account}</p>
                         <p class="profile-bio">${profile.bio || 'No bio yet'}</p>
-                        <div class="profile-actions">
-                            <button class="edit-profile-btn">Edit Profile</button>
-                        </div>
+                        ${isGuest ? `
+                            <div class="guest-notice">
+                                <p>You are browsing as a guest. To access all features, connect with MetaMask.</p>
+                                <button class="switch-to-metamask">Connect MetaMask</button>
+                            </div>
+                        ` : `
+                            <div class="profile-actions">
+                                <button class="edit-profile-btn">Edit Profile</button>
+                            </div>
+                        `}
                     </div>
                 </div>
             `;
@@ -349,18 +351,31 @@ class WalletConnector {
             postsContainer.innerHTML = '<h3>Your Posts</h3>';
             
             const postHandler = new PostHandler(this.account);
-            userPosts.forEach(post => {
-                const postElement = document.createElement('div');
-                postElement.innerHTML = postHandler.renderPost(post);
-                postsContainer.appendChild(postElement);
-            });
+            if (userPosts.length > 0) {
+                userPosts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.innerHTML = postHandler.renderPost(post);
+                    postsContainer.appendChild(postElement);
+                });
+            } else {
+                postsContainer.innerHTML += '<p class="no-posts">No posts yet</p>';
+            }
 
             profileContent.appendChild(postsContainer);
 
-            // Setup edit profile button
-            const editProfileBtn = profileContent.querySelector('.edit-profile-btn');
-            if (editProfileBtn) {
-                editProfileBtn.addEventListener('click', () => this.showEditProfileForm(profile));
+            // Setup button listeners
+            if (!isGuest) {
+                const editProfileBtn = profileContent.querySelector('.edit-profile-btn');
+                if (editProfileBtn) {
+                    editProfileBtn.addEventListener('click', () => this.showEditProfileForm(profile));
+                }
+            } else {
+                const switchToMetaMaskBtn = profileContent.querySelector('.switch-to-metamask');
+                if (switchToMetaMaskBtn) {
+                    switchToMetaMaskBtn.addEventListener('click', async () => {
+                        await this.connectMetaMask();
+                    });
+                }
             }
 
         } catch (error) {
