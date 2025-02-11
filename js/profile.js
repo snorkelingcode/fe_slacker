@@ -164,46 +164,34 @@ class WalletConnector {
     async connectAsGuest() {
         console.log('=== Connecting as Guest ===');
         try {
-            // Check if user can create new guest account
-            if (!SessionManager.canCreateGuestAccount()) {
-                throw new Error('You have reached the maximum number of guest accounts. Please wait 24 hours or use MetaMask to connect.');
-            }
-
-            // Generate a random guest address
-            const randomBytes = new Uint8Array(20);
-            window.crypto.getRandomValues(randomBytes);
-            const guestAddress = '0x' + Array.from(randomBytes)
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
-
-            console.log('Generated guest address:', guestAddress);
-            this.account = guestAddress;
-
+            // Get the persistent guest address for this browser
+            this.account = SessionManager.getGuestWalletAddress();
+            console.log('Using guest address:', this.account);
+    
             // Set wallet address with guest flag
             SessionManager.setWalletAddress(this.account, true);
-
+    
             // Create guest profile with identifier
             const guestId = SessionManager.getGuestIdentifier();
             const guestProfile = {
                 walletAddress: this.account,
                 username: `Guest_${this.account.substring(2, 6)}`,
                 bio: 'Browsing as a guest',
-                guestId: guestId, // Add guest identifier to profile
+                guestId: guestId,
                 accountType: 'guest'
             };
-
+    
             console.log('Creating guest profile:', guestProfile);
-
+    
             try {
                 const response = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                     method: 'POST',
                     body: JSON.stringify(guestProfile)
                 });
                 console.log('Guest profile created:', response);
-
-                // Track this guest account
-                SessionManager.trackGuestAccount(this.account);
-
+    
+                // Guest account is now tracked via localStorage
+    
                 // Redirect to feed page
                 window.location.href = 'index.html';
             } catch (error) {
