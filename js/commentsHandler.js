@@ -127,6 +127,7 @@ class CommentsHandler {
         const mediaInput = document.querySelector('.media-input');
         const postButton = document.querySelector('.post-button');
         const postInput = document.querySelector('.post-input');
+        const mediaPreviewContainer = document.querySelector('.media-preview');
 
         // Media upload handler
         mediaInput.addEventListener('change', (e) => {
@@ -136,15 +137,14 @@ class CommentsHandler {
             try {
                 MediaHandler.validateFile(file);
                 MediaHandler.handleImageUpload(file).then((mediaUrl) => {
-                    const mediaPreview = document.querySelector('.media-preview');
                     const isVideo = file.type.startsWith('video/');
-                    mediaPreview.innerHTML = isVideo
+                    mediaPreviewContainer.innerHTML = isVideo
                         ? `<video src="${mediaUrl}" controls class="media-preview-content"></video>`
                         : `<img src="${mediaUrl}" class="media-preview-content">`;
-                    mediaPreview.innerHTML += '<button class="remove-media">×</button>';
+                    mediaPreviewContainer.innerHTML += '<button class="remove-media">×</button>';
 
-                    mediaPreview.querySelector('.remove-media').addEventListener('click', () => {
-                        mediaPreview.innerHTML = '';
+                    mediaPreviewContainer.querySelector('.remove-media').addEventListener('click', () => {
+                        mediaPreviewContainer.innerHTML = '';
                         mediaInput.value = '';
                     });
                 });
@@ -166,14 +166,17 @@ class CommentsHandler {
             try {
                 LoadingState.show(postButton);
 
+                // Prepare comment data with explicit null checks
                 const commentData = {
                     walletAddress: this.walletAddress,
-                    content,
-                    mediaUrl: mediaPreview ? mediaPreview.src : null,
-                    mediaType: mediaPreview 
-                        ? (mediaPreview.tagName.toLowerCase() === 'video' ? 'video' : 'image') 
-                        : null
+                    content: content || '',
                 };
+
+                // Add media information if present
+                if (mediaPreview) {
+                    commentData.mediaUrl = mediaPreview.src;
+                    commentData.mediaType = mediaPreview.tagName.toLowerCase() === 'video' ? 'video' : 'image';
+                }
 
                 const updatedPost = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/comment`, {
                     method: 'POST',
@@ -186,11 +189,11 @@ class CommentsHandler {
 
                 // Clear input and media preview
                 postInput.value = '';
-                document.querySelector('.media-preview').innerHTML = '';
+                mediaPreviewContainer.innerHTML = '';
 
                 ErrorHandler.showSuccess('Comment posted successfully!', document.querySelector('.comments-page-container'));
                 
-                // Refresh interactions for new comments
+                // Refresh interactions
                 this.setupInteractions(updatedPost);
             } catch (error) {
                 console.error('Error posting comment:', error);
