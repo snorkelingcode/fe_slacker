@@ -4,15 +4,16 @@ class WalletConnector {
         this.web3 = null;
         this.account = null;
         this.isConnecting = false;
-        this.connectionTimeout = null;
+        this.connectionAttempts = 0;
+        this.maxAttempts = 3;
         
-        console.log('Checking for MetaMask:', typeof window.ethereum !== 'undefined');
-
-        // Clear any existing elements in profileContent
-        this.initializeUI();
+        const walletLogin = document.getElementById('walletLogin');
+        const profileContent = document.getElementById('profileContent');
+        if (walletLogin) walletLogin.style.display = 'none';
+        if (profileContent) profileContent.style.display = 'none';
+        
         this.setupEventListeners();
         this.checkExistingConnection();
-        console.log('=== WalletConnector Constructor End ===');
     }
 
     initializeUI() {
@@ -33,28 +34,35 @@ class WalletConnector {
     }
 
     setupEventListeners() {
-        console.log('Setting up event listeners...');
         const metamaskButton = document.getElementById('metamaskButton');
         const guestButton = document.getElementById('guestButton');
         const signOutButton = document.getElementById('signOutButton');
         
         if (metamaskButton) {
-            console.log('Adding MetaMask button listener');
             metamaskButton.addEventListener('click', async () => {
                 if (this.isConnecting) {
-                    console.log('Connection already in progress...');
+                    console.log('Connection already in progress, please wait...');
+                    ErrorHandler.showError('Connection in progress, please check MetaMask popup', document.getElementById('walletLogin'));
                     return;
                 }
                 
                 LoadingState.show(metamaskButton);
+                metamaskButton.disabled = true;
+                
                 try {
                     this.isConnecting = true;
                     await this.connectMetaMask();
                 } catch (error) {
                     console.error('MetaMask connection error:', error);
-                    ErrorHandler.showError(error.message, document.getElementById('walletLogin'));
+                    ErrorHandler.showError(
+                        error.code === -32002 
+                            ? 'MetaMask connection pending. Please open MetaMask and connect.' 
+                            : error.message,
+                        document.getElementById('walletLogin')
+                    );
                 } finally {
                     this.isConnecting = false;
+                    metamaskButton.disabled = false;
                     LoadingState.hide(metamaskButton);
                 }
             });
@@ -197,8 +205,7 @@ class WalletConnector {
 
     async connectMetaMask() {
         console.log('=== Connecting MetaMask ===');
-        console.log('MetaMask available:', typeof window.ethereum !== 'undefined');
-
+        
         if (typeof window.ethereum === 'undefined') {
             ErrorHandler.showError('Please install MetaMask to continue!', document.getElementById('walletLogin'));
             setTimeout(() => {
@@ -207,14 +214,27 @@ class WalletConnector {
             return;
         }
 
-        try {
-            if (this.connectionTimeout) {
-                clearTimeout(this.connectionTimeout);
-            }
+        // Reset connection state
+        await window.ethereum.request({
+            method: 'wallet_requestPermissions',
+            params: [{ eth_accounts: {} }]
+        }).catch(() => {
+            console.log('Permissions reset attempted');
+        });
 
+        // Wait a moment before attempting connection
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        try {
             console.log('Requesting MetaMask accounts...');
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            console.log('MetaMask accounts received:', accounts);
+            const accounts = await window.ethereum.request({ 
+                method: 'eth_requestAccounts',
+                params: []
+            });
+            
+            if (!accounts || accounts.length === 0) {
+                throw new Error('No accounts found');
+            }
 
             this.account = accounts[0];
             this.web3 = new Web3(window.ethereum);
@@ -234,12 +254,8 @@ class WalletConnector {
 
         } catch (error) {
             console.error('MetaMask connection error:', error);
-            
             if (error.code === -32002) {
                 ErrorHandler.showError('Please check MetaMask for pending connection request', 
-                    document.getElementById('walletLogin'));
-            } else {
-                ErrorHandler.showError('Failed to connect: ' + error.message, 
                     document.getElementById('walletLogin'));
             }
             throw error;
