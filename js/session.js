@@ -1,8 +1,6 @@
 class SessionManager {
     static GUEST_ID_KEY = 'guestIdentifier';
-    static GUEST_ACCOUNTS_KEY = 'guestAccounts';
-    static MAX_GUEST_ACCOUNTS = 3; // Maximum number of guest accounts per browser
-    static GUEST_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    static GUEST_ADDRESS_KEY = 'guestWalletAddress';
 
     // Get or create a persistent guest identifier
     static getGuestIdentifier() {
@@ -14,49 +12,31 @@ class SessionManager {
         return guestId;
     }
 
-    // Track guest account creation
-    static trackGuestAccount(walletAddress) {
-        const now = Date.now();
-        let guestAccounts = JSON.parse(localStorage.getItem(this.GUEST_ACCOUNTS_KEY) || '[]');
-        
-        // Remove expired accounts
-        guestAccounts = guestAccounts.filter(account => 
-            (now - account.timestamp) < this.GUEST_TIMEOUT
-        );
-
-        // Add new account
-        guestAccounts.push({
-            walletAddress,
-            timestamp: now,
-            guestId: this.getGuestIdentifier()
-        });
-
-        localStorage.setItem(this.GUEST_ACCOUNTS_KEY, JSON.stringify(guestAccounts));
-        return guestAccounts.length;
-    }
-
-    // Check if user can create new guest account
-    static canCreateGuestAccount() {
-        const guestAccounts = JSON.parse(localStorage.getItem(this.GUEST_ACCOUNTS_KEY) || '[]');
-        const now = Date.now();
-        
-        // Filter to only include accounts created within the timeout period
-        const activeAccounts = guestAccounts.filter(account => 
-            (now - account.timestamp) < this.GUEST_TIMEOUT
-        );
-
-        return activeAccounts.length < this.MAX_GUEST_ACCOUNTS;
+    // Get or create a persistent guest wallet address
+    static getGuestWalletAddress() {
+        let guestAddress = localStorage.getItem(this.GUEST_ADDRESS_KEY);
+        if (!guestAddress) {
+            const randomBytes = new Uint8Array(20);
+            window.crypto.getRandomValues(randomBytes);
+            guestAddress = '0x' + Array.from(randomBytes)
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+            localStorage.setItem(this.GUEST_ADDRESS_KEY, guestAddress);
+        }
+        return guestAddress;
     }
 
     static setWalletAddress(address, isGuest = false) {
         console.log('Setting wallet address:', address, 'isGuest:', isGuest);
         if (isGuest) {
+            // Store the guest ID for this session
             const guestId = this.getGuestIdentifier();
             localStorage.setItem('guestId', guestId);
         }
         localStorage.setItem('walletAddress', address);
         localStorage.setItem('lastConnected', new Date().toString());
         localStorage.setItem('isGuest', isGuest.toString());
+        
         console.log('Session storage after set:', {
             walletAddress: localStorage.getItem('walletAddress'),
             lastConnected: localStorage.getItem('lastConnected'),
@@ -95,24 +75,14 @@ class SessionManager {
 
     static clearSession() {
         console.log('Clearing session...');
-        const isGuest = localStorage.getItem('isGuest') === 'true';
-        const walletAddress = localStorage.getItem('walletAddress');
-
-        if (isGuest && walletAddress) {
-            // Keep track of the guest account in history but remove active session
-            this.trackGuestAccount(walletAddress);
-        }
-
-        localStorage.removeItem('walletAddress');
-        localStorage.removeItem('lastConnected');
-        localStorage.removeItem('isGuest');
-        localStorage.removeItem('guestId');
+        // Don't remove guest identifier or address - we want to reuse them
+        const keysToRemove = ['walletAddress', 'lastConnected', 'isGuest'];
+        keysToRemove.forEach(key => localStorage.removeItem(key));
         
         console.log('Session storage after clear:', {
             walletAddress: localStorage.getItem('walletAddress'),
             lastConnected: localStorage.getItem('lastConnected'),
-            isGuest: localStorage.getItem('isGuest'),
-            guestId: localStorage.getItem('guestId')
+            isGuest: localStorage.getItem('isGuest')
         });
     }
 
