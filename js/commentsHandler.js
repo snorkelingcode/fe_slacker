@@ -31,31 +31,14 @@ class CommentsHandler {
             console.log('Attempting to load post with ID:', this.postId);
             
             // Use the specific post endpoint to fetch the post by ID
-            const response = await fetch(`${API_ENDPOINTS.posts}/${this.postId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                }
+            const response = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}`, {
+                method: 'GET'
             });
 
-            console.log('Fetch response:', response);
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Error response text:', errorText);
-                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-            }
-
-            const post = await response.json();
+            console.log('Loaded Post:', response);
             
-            if (!post) {
-                throw new Error('Post not found');
-            }
-
-            console.log('Loaded Post:', post);
-            this.renderPage(post);
-            this.setupInteractions(post);
+            this.renderPage(response);
+            this.setupInteractions(response);
         } catch (error) {
             console.error('Detailed error loading post:', {
                 name: error.name,
@@ -93,7 +76,7 @@ class CommentsHandler {
         `;
 
         // Setup comment form interactions manually
-        this.setupCommentFormInteractions();
+        this.setupCommentFormInteractions(post);
     }
 
     renderOriginalPost(post) {
@@ -140,7 +123,7 @@ class CommentsHandler {
             </div>`;
     }
 
-    setupCommentFormInteractions() {
+    setupCommentFormInteractions(post) {
         const mediaInput = document.querySelector('.media-input');
         const postButton = document.querySelector('.post-button');
         const postInput = document.querySelector('.post-input');
@@ -197,7 +180,7 @@ class CommentsHandler {
                     body: JSON.stringify(commentData)
                 });
 
-                // Re-render the entire comments section
+                // Re-render comments list with only this post's comments
                 const commentsList = document.querySelector('.comments-list');
                 commentsList.innerHTML = this.renderComments(updatedPost.comments);
 
@@ -207,13 +190,20 @@ class CommentsHandler {
 
                 ErrorHandler.showSuccess('Comment posted successfully!', document.querySelector('.comments-page-container'));
                 
-                // Setup interactions for new comments
+                // Refresh interactions for new comments
                 this.setupInteractions(updatedPost);
             } catch (error) {
                 console.error('Error posting comment:', error);
-                ErrorHandler.showError('Failed to post comment', document.querySelector('.comments-page-container'));
+                ErrorHandler.showError('Failed to post comment: ' + error.message, document.querySelector('.comments-page-container'));
             } finally {
                 LoadingState.hide(postButton);
+            }
+        });
+
+        // Optional: Add support for posting comment with Ctrl/Cmd + Enter
+        postInput.addEventListener('keydown', async (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                postButton.click();
             }
         });
     }
@@ -274,13 +264,18 @@ class CommentsHandler {
                 try {
                     LoadingState.show(deleteCommentBtn);
                     
-                    await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/comments/${commentId}`, {
+                    const updatedPost = await makeApiCall(`${API_ENDPOINTS.posts}/${this.postId}/comments/${commentId}`, {
                         method: 'DELETE',
                         body: JSON.stringify({ walletAddress: this.walletAddress })
                     });
                     
-                    // Remove comment from UI
-                    commentElement.remove();
+                    // Re-render comments list with updated comments
+                    const commentsList = document.querySelector('.comments-list');
+                    commentsList.innerHTML = this.renderComments(updatedPost.comments);
+
+                    // Refresh interactions
+                    this.setupInteractions(updatedPost);
+
                     ErrorHandler.showSuccess('Comment deleted successfully', document.querySelector('.comments-page-container'));
                 } catch (error) {
                     console.error('Error deleting comment:', error);
@@ -311,19 +306,21 @@ class CommentsHandler {
     }
 
     renderComments(comments = []) {
-        return comments.map(comment => `
-            <div class="comment" data-comment-id="${comment.id}">
-                <div class="comment-header">
-                    <span class="comment-author">${this.formatAuthor(comment.author)}</span>
-                    <span class="comment-timestamp">${new Date(comment.createdAt).toLocaleString()}</span>
-                    ${this.canDeleteComment(comment) ? `
-                        <button class="delete-comment-btn" data-comment-id="${comment.id}">Delete</button>
-                    ` : ''}
+        return comments.length > 0 
+            ? comments.map(comment => `
+                <div class="comment" data-comment-id="${comment.id}">
+                    <div class="comment-header">
+                        <span class="comment-author">${this.formatAuthor(comment.author)}</span>
+                        <span class="comment-timestamp">${new Date(comment.createdAt).toLocaleString()}</span>
+                        ${this.canDeleteComment(comment) ? `
+                            <button class="delete-comment-btn" data-comment-id="${comment.id}">Delete</button>
+                        ` : ''}
+                    </div>
+                    <p class="comment-content">${this.formatPostContent(comment.content || '')}</p>
+                    ${this.renderMedia(comment)}
                 </div>
-                <p class="comment-content">${this.formatPostContent(comment.content)}</p>
-                ${this.renderMedia(comment)}
-            </div>
-        `).join('');
+            `).join('') 
+            : '<p class="no-comments">No comments yet</p>';
     }
 
     canDeletePost(post) {
