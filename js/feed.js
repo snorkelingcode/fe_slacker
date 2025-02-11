@@ -20,11 +20,6 @@ class FeedHandler {
         
         this.setupFeed();
         this.loadPosts();
-
-        // Add event listener for post interactions
-        document.addEventListener('postInteraction', () => {
-            this.loadPosts();
-        });
     }
 
     setupFeed() {
@@ -55,13 +50,48 @@ class FeedHandler {
                 ? posts.map(post => this.postHandler.renderPost(post)).join('')
                 : '<p class="no-posts">No posts yet</p>';
 
-            // Add event listeners for post interactions directly
+            // Add like button handlers
+            document.querySelectorAll('.like-btn').forEach(button => {
+                button.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const postId = button.closest('.post').dataset.postId;
+                    try {
+                        const response = await makeApiCall(`${API_ENDPOINTS.posts}/${postId}/like`, {
+                            method: 'POST',
+                            body: JSON.stringify({ walletAddress: this.walletAddress })
+                        });
+                        
+                        // Update like count
+                        button.innerHTML = `❤️ ${response.likes.length}`;
+                    } catch (error) {
+                        console.error('Error liking post:', error);
+                        ErrorHandler.showError('Failed to like post', postsContainer);
+                    }
+                });
+            });
+
+            // Add comment button handlers
             document.querySelectorAll('.comment-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
-                    console.log('Comment button clicked in feed.js');
+                    console.log('Comment button clicked');
                     const post = e.target.closest('.post');
+                    console.log('Post element:', post);
+                    
+                    if (!post) {
+                        console.error('Could not find closest post element');
+                        return;
+                    }
+                    
                     const postId = post.dataset.postId;
                     console.log('Post ID:', postId);
+                    
+                    if (!postId) {
+                        console.error('No post ID found on the post element');
+                        return;
+                    }
+                    
                     window.location.href = `comments.html?postId=${postId}`;
                 });
             });
