@@ -349,6 +349,8 @@ async handleLike(postId) {
         // Delete buttons
         document.querySelectorAll('.delete-post-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const postId = e.target.closest('.post').dataset.postId;
                 await this.deletePost(postId);
             });
@@ -356,57 +358,46 @@ async handleLike(postId) {
     
         // Like buttons
         document.querySelectorAll('.like-btn').forEach(button => {
-            // Remove any existing click listeners
-            button.replaceWith(button.cloneNode(true));
-            // Get the fresh button reference after replacement
-            const newButton = document.querySelector(`.like-btn[data-post-id="${button.dataset.postId}"]`);
-            if (newButton) {
-                newButton.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const postId = e.target.closest('.post').dataset.postId;
-                    await this.handleLike(postId);
-                });
-            }
-        });
-    
-        // Comment buttons - now redirects to comments page
-        document.querySelectorAll('.comment-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                console.log('Comment button clicked');
-                const post = e.target.closest('.post');
-                console.log('Post element:', post);
+            button.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const postElement = e.target.closest('.post');
+                if (!postElement) return;
                 
-                if (!post) {
-                    console.error('Could not find closest post element');
-                    return;
+                const postId = postElement.dataset.postId;
+                const likeButton = postElement.querySelector('.like-btn');
+                
+                try {
+                    if (likeButton) likeButton.disabled = true;
+                    const response = await makeApiCall(`${API_ENDPOINTS.posts}/${postId}/like`, {
+                        method: 'POST',
+                        body: JSON.stringify({ walletAddress: this.walletAddress })
+                    });
+                    
+                    if (likeButton) {
+                        likeButton.innerHTML = `❤️ ${response._count.likes}`;
+                        likeButton.disabled = false;
+                    }
+                } catch (error) {
+                    console.error('Error liking post:', error);
+                    if (likeButton) likeButton.disabled = false;
+                    ErrorHandler.showError('Failed to like post', postElement);
                 }
-                
-                const postId = post.dataset.postId;
-                console.log('Post ID:', postId);
-                
-                if (!postId) {
-                    console.error('No post ID found on the post element');
-                    return;
-                }
-                
-                // Redirect to comments page with the specific post ID
-                window.location.href = `comments.html?postId=${postId}`;
             });
         });
-
-        // Post comment buttons
-        document.querySelectorAll('.post-comment-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
+    
+        // Comment buttons
+        document.querySelectorAll('.comment-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const post = e.target.closest('.post');
-                const postId = post.dataset.postId;
-                const commentInput = post.querySelector('.comment-input');
-                const comment = commentInput.value.trim();
+                if (!post) return;
                 
-                if (comment) {
-                    await this.handleComment(postId, comment);
-                    commentInput.value = '';
-                }
+                const postId = post.dataset.postId;
+                if (!postId) return;
+                
+                window.location.href = `comments.html?postId=${postId}`;
             });
         });
     }
