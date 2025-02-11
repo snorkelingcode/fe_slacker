@@ -388,21 +388,29 @@ class WalletConnector {
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    if (confirm('Are you sure you want to delete this post?')) {
-                        const post = button.closest('.post');
-                        const postId = post.dataset.postId;
-                        try {
-                            await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
-                                method: 'DELETE'
-                            });
-                            
-                            // Remove the post from the UI
-                            post.remove();
-                            ErrorHandler.showSuccess('Post deleted successfully!', postsContainer);
-                        } catch (error) {
-                            console.error('Error deleting post:', error);
-                            ErrorHandler.showError('Failed to delete post', post);
-                        }
+                    const post = button.closest('.post');
+                    const postId = post.dataset.postId;
+                    
+                    try {
+                        LoadingState.show(button);
+                        
+                        await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
+                            method: 'DELETE',
+                            body: JSON.stringify({ 
+                                walletAddress: SessionManager.getWalletAddress() 
+                            })
+                        });
+                        
+                        // Remove the post from the UI
+                        post.remove();
+                        
+                        // Show success message
+                        ErrorHandler.showSuccess('Post deleted successfully!', document.querySelector('.posts-container'));
+                    } catch (error) {
+                        console.error('Error deleting post:', error);
+                        ErrorHandler.showError('Failed to delete post', post);
+                    } finally {
+                        LoadingState.hide(button);
                     }
                 });
             });

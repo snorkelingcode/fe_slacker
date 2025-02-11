@@ -245,25 +245,28 @@ async handleLike(postId) {
             console.error('No post ID provided for deletion');
             return;
         }
-
+    
         if (!confirm('Are you sure you want to delete this post?')) {
             return;
         }
-
+    
         const postElement = document.querySelector(`.post[data-post-id="${postId}"]`);
         if (!postElement) return;
-
+    
         try {
             LoadingState.show(postElement);
-
-            // Make API call to delete the post
-            await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
+    
+            // Make API call to delete the post with wallet address
+            const response = await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
                 method: 'DELETE',
+                body: JSON.stringify({ 
+                    walletAddress: this.walletAddress 
+                }),
                 headers: {
                     'Content-Type': 'application/json'
                 }
             });
-
+            
             // Remove the post from UI
             postElement.remove();
             
@@ -272,7 +275,7 @@ async handleLike(postId) {
             if (postsContainer) {
                 ErrorHandler.showSuccess('Post deleted successfully!', postsContainer);
             }
-
+    
         } catch (error) {
             console.error('Error deleting post:', error);
             ErrorHandler.showError(`Failed to delete post: ${error.message}`, postElement);
