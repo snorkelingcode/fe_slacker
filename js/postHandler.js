@@ -197,7 +197,10 @@ async handleLike(postId) {
             body: JSON.stringify({ walletAddress: this.walletAddress })
         });
         
-        // Update like count directly without reloading all posts
+        // Dispatch event that post was liked
+        document.dispatchEvent(new CustomEvent('postInteraction'));
+
+        // Update like count directly
         if (button) {
             button.innerHTML = `❤️ ${response.likes ? response.likes.length : 0}`;
             button.disabled = false;
@@ -348,57 +351,49 @@ async handleLike(postId) {
     setupPostInteractions() {
         // Delete buttons
         document.querySelectorAll('.delete-post-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const postId = e.target.closest('.post').dataset.postId;
-                await this.deletePost(postId);
-            });
+            button.replaceWith(button.cloneNode(true));
+            const newButton = document.querySelector(`.delete-post-btn`);
+            if (newButton) {
+                newButton.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const postId = e.target.closest('.post').dataset.postId;
+                    await this.deletePost(postId);
+                });
+            }
         });
     
         // Like buttons
         document.querySelectorAll('.like-btn').forEach(button => {
-            button.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const postElement = e.target.closest('.post');
-                if (!postElement) return;
-                
-                const postId = postElement.dataset.postId;
-                const likeButton = postElement.querySelector('.like-btn');
-                
-                try {
-                    if (likeButton) likeButton.disabled = true;
-                    const response = await makeApiCall(`${API_ENDPOINTS.posts}/${postId}/like`, {
-                        method: 'POST',
-                        body: JSON.stringify({ walletAddress: this.walletAddress })
-                    });
-                    
-                    if (likeButton) {
-                        likeButton.innerHTML = `❤️ ${response._count.likes}`;
-                        likeButton.disabled = false;
-                    }
-                } catch (error) {
-                    console.error('Error liking post:', error);
-                    if (likeButton) likeButton.disabled = false;
-                    ErrorHandler.showError('Failed to like post', postElement);
-                }
-            });
+            button.replaceWith(button.cloneNode(true));
+            const newButton = document.querySelector(`.like-btn[data-post-id="${button.dataset.postId}"]`);
+            if (newButton) {
+                newButton.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const postId = e.target.closest('.post').dataset.postId;
+                    await this.handleLike(postId);
+                });
+            }
         });
     
         // Comment buttons
         document.querySelectorAll('.comment-btn').forEach(button => {
-            button.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                const post = e.target.closest('.post');
-                if (!post) return;
-                
-                const postId = post.dataset.postId;
-                if (!postId) return;
-                
-                window.location.href = `comments.html?postId=${postId}`;
-            });
+            button.replaceWith(button.cloneNode(true));
+            const newButton = document.querySelector(`.comment-btn`);
+            if (newButton) {
+                newButton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const post = e.target.closest('.post');
+                    if (!post) return;
+                    
+                    const postId = post.dataset.postId;
+                    if (!postId) return;
+                    
+                    window.location.href = `comments.html?postId=${postId}`;
+                });
+            }
         });
     }
 }

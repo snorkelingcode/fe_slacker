@@ -20,6 +20,11 @@ class FeedHandler {
         
         this.setupFeed();
         this.loadPosts();
+
+        // Add event listener for post interactions
+        document.addEventListener('postInteraction', () => {
+            this.loadPosts();
+        });
     }
 
     setupFeed() {
