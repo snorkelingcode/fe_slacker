@@ -1,6 +1,8 @@
 class SessionManager {
     static GUEST_ID_KEY = 'guestIdentifier';
     static GUEST_ADDRESS_KEY = 'guestWalletAddress';
+    static GUEST_ACCOUNTS_KEY = 'guestAccounts';
+    static MAX_GUEST_ACCOUNTS = 3; // Maximum number of guest accounts per 24 hours
 
     // Get or create a persistent guest identifier
     static getGuestIdentifier() {
@@ -10,6 +12,42 @@ class SessionManager {
             localStorage.setItem(this.GUEST_ID_KEY, guestId);
         }
         return guestId;
+    }
+
+    // Track guest account creation
+    static trackGuestAccount(address) {
+        const now = new Date().getTime();
+        const guestAccounts = this.getGuestAccounts();
+        
+        // Add new guest account with timestamp
+        guestAccounts.push({
+            address: address,
+            timestamp: now
+        });
+        
+        // Store updated list
+        localStorage.setItem(this.GUEST_ACCOUNTS_KEY, JSON.stringify(guestAccounts));
+    }
+
+    // Get list of guest accounts created in the last 24 hours
+    static getGuestAccounts() {
+        const accounts = JSON.parse(localStorage.getItem(this.GUEST_ACCOUNTS_KEY) || '[]');
+        const now = new Date().getTime();
+        const oneDayAgo = now - (24 * 60 * 60 * 1000);
+        
+        // Filter out accounts older than 24 hours
+        const recentAccounts = accounts.filter(account => account.timestamp > oneDayAgo);
+        
+        // Update storage with only recent accounts
+        localStorage.setItem(this.GUEST_ACCOUNTS_KEY, JSON.stringify(recentAccounts));
+        
+        return recentAccounts;
+    }
+
+    // Check if user can create a new guest account
+    static canCreateGuestAccount() {
+        const recentAccounts = this.getGuestAccounts();
+        return recentAccounts.length < this.MAX_GUEST_ACCOUNTS;
     }
 
     // Get or create a persistent guest wallet address
