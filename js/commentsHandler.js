@@ -106,22 +106,22 @@ class CommentsHandler {
             </div>`;
     }
 
-    renderCommentForm() {
-        return `
-            <div class="post-form comment-form">
-                <textarea class="post-input" placeholder="Write a comment..."></textarea>
-                <div class="post-actions">
-                    <div class="media-options">
-                        <label class="media-button">
-                            <input type="file" accept="image/*,video/*" hidden class="media-input">
-                            <span>Add Media</span>
-                        </label>
+        renderCommentForm() {
+            return `
+                <div class="post-form comment-form">
+                    <textarea class="post-input" placeholder="Write a comment..."></textarea>
+                    <div class="post-actions">
+                        <div class="media-options">
+                            <label class="media-button">
+                                <input type="file" accept="image/*,video/*" hidden class="media-input">
+                                <span>Add Media</span>
+                            </label>
+                        </div>
+                        <button class="post-button">Post</button>
                     </div>
-                    <button class="post-button">Post Comment</button>
-                </div>
-                <div class="media-preview"></div>
-            </div>`;
-    }
+                    <div class="media-preview"></div>
+                </div>`;
+        }
 
     setupCommentFormInteractions(post) {
         const mediaInput = document.querySelector('.media-input');
