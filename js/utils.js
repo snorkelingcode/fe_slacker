@@ -69,39 +69,108 @@ class LoadingState {
     }
 }
 
-// Media Handler Class
 class MediaHandler {
+    static UPLOAD_ENDPOINT = `${API_BASE_URL}upload`;
+
     static validateFile(file) {
-        const maxSize = 5 * 1024 * 1024; // 5MB
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4'];
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const allowedTypes = [
+            'image/jpeg', 
+            'image/png', 
+            'image/gif', 
+            'video/mp4', 
+            'video/quicktime'
+        ];
 
         if (!file) {
             throw new Error('No file selected');
         }
 
         if (!allowedTypes.includes(file.type)) {
-            throw new Error('File type not supported. Please use JPG, PNG, GIF, or MP4.');
+            throw new Error('File type not supported. Please use JPG, PNG, GIF, MP4, or MOV.');
         }
 
         if (file.size > maxSize) {
-            throw new Error('File is too large. Maximum size is 5MB.');
+            throw new Error('File is too large. Maximum size is 10MB.');
         }
     }
 
-    static async handleImageUpload(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            
-            reader.onload = () => {
-                resolve(reader.result);
-            };
-            
-            reader.onerror = () => {
-                reject(new Error('Failed to read file'));
-            };
-            
-            reader.readAsDataURL(file);
-        });
+    static async uploadFile(file, type = 'general') {
+        try {
+            this.validateFile(file);
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(
+                type === 'general' 
+                    ? this.UPLOAD_ENDPOINT 
+                    : `${this.UPLOAD_ENDPOINT}/${type}`,
+                {
+                    method: 'POST',
+                    body: formData
+                }
+            );
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Upload failed');
+            }
+
+            const result = await response.json();
+            return result.url;
+        } catch (error) {
+            console.error('File upload error:', error);
+            throw error;
+        }
+    }
+
+    static async handleProfileImageUpload(file, walletAddress) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('walletAddress', walletAddress);
+
+            const response = await fetch(`${this.UPLOAD_ENDPOINT}/profile`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Profile image upload failed');
+            }
+
+            const result = await response.json();
+            return result.url;
+        } catch (error) {
+            console.error('Profile image upload error:', error);
+            throw error;
+        }
+    }
+
+    static async handleBannerImageUpload(file, walletAddress) {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('walletAddress', walletAddress);
+
+            const response = await fetch(`${this.UPLOAD_ENDPOINT}/banner`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Banner image upload failed');
+            }
+
+            const result = await response.json();
+            return result.url;
+        } catch (error) {
+            console.error('Banner image upload error:', error);
+            throw error;
+        }
     }
 }
 

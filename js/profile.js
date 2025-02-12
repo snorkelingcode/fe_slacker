@@ -526,6 +526,61 @@ class WalletConnector {
             LoadingState.hide(document.querySelector('.edit-profile-form'));
         }
     }
+    
+    async handleProfilePictureUpload(event) {
+        try {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const profilePicture = document.querySelector('.profile-picture');
+            LoadingState.show(profilePicture);
+
+            // Upload profile picture using MediaHandler
+            const mediaUrl = await MediaHandler.handleProfileImageUpload(file, this.account);
+            
+            // Update the profile picture display
+            profilePicture.style.backgroundImage = `url(${mediaUrl})`;
+            profilePicture.innerHTML = ''; // Remove the upload prompt
+
+            // Update the profile in the database
+            await this.updateProfile({ profilePicture: mediaUrl });
+            
+            ErrorHandler.showSuccess('Profile picture updated successfully!', document.querySelector('.profile-info'));
+        } catch (error) {
+            console.error('Error uploading profile picture:', error);
+            ErrorHandler.showError(error.message, document.querySelector('.profile-info'));
+        } finally {
+            LoadingState.hide(document.querySelector('.profile-picture'));
+        }
+    }
+
+    async handleBannerUpload(event) {
+        try {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const profileCover = document.querySelector('.profile-cover');
+            LoadingState.show(profileCover);
+
+            // Upload banner using MediaHandler
+            const mediaUrl = await MediaHandler.handleBannerImageUpload(file, this.account);
+            
+            // Update the banner display
+            profileCover.style.backgroundImage = `url(${mediaUrl})`;
+            profileCover.innerHTML = ''; // Remove the upload prompt
+
+            // Update the profile in the database
+            await this.updateProfile({ banner: mediaUrl });
+            
+            ErrorHandler.showSuccess('Banner updated successfully!', document.querySelector('.profile-info'));
+        } catch (error) {
+            console.error('Error uploading banner:', error);
+            ErrorHandler.showError(error.message, document.querySelector('.profile-info'));
+        } finally {
+            LoadingState.hide(document.querySelector('.profile-cover'));
+        }
+    }
+
 }    
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', () => {

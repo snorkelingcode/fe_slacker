@@ -90,36 +90,37 @@ class PostHandler {
         });
     }
 
-    async handleMediaUpload(event) {
-        try {
-            const file = event.target.files[0];
-            if (!file) return;
+async handleMediaUpload(event) {
+    try {
+        const file = event.target.files[0];
+        if (!file) return;
 
-            if (typeof MediaHandler !== 'undefined') {
-                MediaHandler.validateFile(file);
-                const mediaUrl = await MediaHandler.handleImageUpload(file);
-                
-                const mediaPreview = document.querySelector('.media-preview');
-                const isVideo = file.type.startsWith('video/');
-                mediaPreview.innerHTML = isVideo
-                    ? `<video src="${mediaUrl}" controls class="media-preview-content"></video>`
-                    : `<img src="${mediaUrl}" class="media-preview-content">`;
-                mediaPreview.innerHTML += '<button class="remove-media">×</button>';
+        const mediaPreview = document.querySelector('.media-preview');
+        mediaPreview.innerHTML = '<div class="loading-spinner"></div>';
 
-                mediaPreview.querySelector('.remove-media').addEventListener('click', () => {
-                    mediaPreview.innerHTML = '';
-                    event.target.value = '';
-                });
-            }
-        } catch (error) {
-            if (typeof ErrorHandler !== 'undefined') {
-                ErrorHandler.showError(error.message, event.target.parentElement);
-            } else {
-                console.error('Error:', error.message);
-            }
+        // Upload the file using MediaHandler
+        const mediaUrl = await MediaHandler.uploadFile(file);
+        
+        const isVideo = file.type.startsWith('video/');
+        mediaPreview.innerHTML = isVideo
+            ? `<video src="${mediaUrl}" controls class="media-preview-content"></video>`
+            : `<img src="${mediaUrl}" class="media-preview-content">`;
+        mediaPreview.innerHTML += '<button class="remove-media">×</button>';
+
+        // Add remove media handler
+        mediaPreview.querySelector('.remove-media').addEventListener('click', () => {
+            mediaPreview.innerHTML = '';
             event.target.value = '';
+        });
+    } catch (error) {
+        if (typeof ErrorHandler !== 'undefined') {
+            ErrorHandler.showError(error.message, event.target.parentElement);
+        } else {
+            console.error('Error:', error.message);
         }
+        event.target.value = '';
     }
+}
 
 // Inside PostHandler class:
 async createPost(container) {

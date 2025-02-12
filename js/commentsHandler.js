@@ -123,35 +123,39 @@ class CommentsHandler {
                 </div>`;
         }
 
-    setupCommentFormInteractions(post) {
-        const mediaInput = document.querySelector('.media-input');
-        const postButton = document.querySelector('.post-button');
-        const postInput = document.querySelector('.post-input');
-        const mediaPreviewContainer = document.querySelector('.media-preview');
-
-        // Media upload handler
-        mediaInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            try {
-                MediaHandler.validateFile(file);
-                MediaHandler.handleImageUpload(file).then((mediaUrl) => {
+        setupCommentFormInteractions(post) {
+            const mediaInput = document.querySelector('.media-input');
+            const postButton = document.querySelector('.post-button');
+            const postInput = document.querySelector('.post-input');
+            const mediaPreviewContainer = document.querySelector('.media-preview');
+        
+            // Media upload handler
+            mediaInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+        
+                try {
+                    mediaPreviewContainer.innerHTML = '<div class="loading-spinner"></div>';
+                    
+                    // Upload media using MediaHandler
+                    const mediaUrl = await MediaHandler.uploadFile(file);
+                    
                     const isVideo = file.type.startsWith('video/');
                     mediaPreviewContainer.innerHTML = isVideo
                         ? `<video src="${mediaUrl}" controls class="media-preview-content"></video>`
                         : `<img src="${mediaUrl}" class="media-preview-content">`;
                     mediaPreviewContainer.innerHTML += '<button class="remove-media">×</button>';
-
+        
                     mediaPreviewContainer.querySelector('.remove-media').addEventListener('click', () => {
                         mediaPreviewContainer.innerHTML = '';
                         mediaInput.value = '';
                     });
-                });
-            } catch (error) {
-                ErrorHandler.showError(error.message, mediaInput.closest('.media-options'));
-            }
-        });
+                } catch (error) {
+                    ErrorHandler.showError(error.message, mediaInput.closest('.media-options'));
+                    mediaInput.value = '';
+                    mediaPreviewContainer.innerHTML = '';
+                }
+            });
 
         // Comment submission handler
         postButton.addEventListener('click', async () => {
