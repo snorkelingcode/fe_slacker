@@ -590,7 +590,7 @@ main {
     border-radius: 6px;
     cursor: pointer;
     transition: background-color 0.2s;
-    font-size: 0.5rem;
+    font-size: 0.75rem;
 }
 
 .delete-post-btn:hover {
