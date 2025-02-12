@@ -202,6 +202,7 @@ main {
     padding: 2rem;
     max-width: 600px;
     margin: 0 auto;
+    margin-bottom: 2rem;
 }
 
 .edit-profile-form h2 {
@@ -288,9 +289,12 @@ main {
 
 /* Form Buttons */
 .form-buttons {
-    display: flex;
-    gap: 1rem;
-    margin-top: 2rem;
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 1rem 0;
+    margin-top: 1rem;
+    border-top: 1px solid #e4e6eb;
 }
 
 .save-profile-btn,
@@ -398,21 +402,23 @@ main {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 1001;
+    overflow-y: auto; /* Enable scrolling */
 }
 
 .modal-content {
     background-color: white;
-    margin: 10% auto;
+    margin: 0 auto; /* Remove top margin */
     padding: 2rem;
     border-radius: 8px;
     max-width: 600px;
     position: relative;
-    animation: modalSlideIn 0.3s ease;
+    animation: modalSlideDown 0.3s ease;
+    margin-top: 80px; /* Add space below the navbar */
 }
 
-@keyframes modalSlideIn {
+@keyframes modalSlideDown {
     from {
-        transform: translateY(-50px);
+        transform: translateY(-20px);
         opacity: 0;
     }
     to {

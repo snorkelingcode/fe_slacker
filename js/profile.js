@@ -16,11 +16,10 @@ class WalletConnector {
         if (profileContent) profileContent.style.display = 'none';
         
         this.setupEventListeners();
-        this.setupSignOutButton(); // Add dedicated sign out setup
+        this.setupSignOutButton();
         this.checkExistingConnection();
     }
 
-    // New dedicated method for sign out button
     setupSignOutButton() {
         const signOutButton = document.getElementById('signOutButton');
         if (signOutButton) {
@@ -146,7 +145,6 @@ class WalletConnector {
             this.showLoginForm();
         }
     }
-
     showLoginForm() {
         console.log('=== Showing Login Form ===');
         const walletLogin = document.getElementById('walletLogin');
@@ -206,15 +204,6 @@ class WalletConnector {
             return;
         }
 
-        await window.ethereum.request({
-            method: 'wallet_requestPermissions',
-            params: [{ eth_accounts: {} }]
-        }).catch(() => {
-            console.log('Permissions reset attempted');
-        });
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
         try {
             console.log('Requesting MetaMask accounts...');
             const accounts = await window.ethereum.request({ 
@@ -252,42 +241,161 @@ class WalletConnector {
         }
     }
 
-    async createOrLoadProfile() {
-        console.log('=== Creating/Loading Profile ===');
-        console.log('Current account:', this.account);
+    // Function to ensure modal is visible and properly positioned
+    positionModal(modal) {
+        // Scroll to top when modal opens
+        window.scrollTo(0, 0);
+        
+        // Ensure body doesn't scroll while modal is open
+        document.body.style.overflow = 'hidden';
+        
+        // Add event listener to restore scroll when modal closes
+        const restoreScroll = () => {
+            document.body.style.overflow = '';
+        };
+        
+        modal.querySelector('.close-modal').addEventListener('click', restoreScroll);
+        modal.querySelector('.cancel-edit-btn').addEventListener('click', restoreScroll);
+        modal.querySelector('#editProfileForm').addEventListener('submit', restoreScroll);
+    }
 
-        const defaultProfile = {
-            walletAddress: this.account.toLowerCase(),
-            username: `User_${this.account.substring(2, 8)}`,
-            bio: 'New to Slacker'
+    showEditProfileForm(profile) {
+        console.log('=== Showing Edit Profile Form ===', profile);
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'block';
+        modal.innerHTML = `
+            <div class="modal-content edit-profile-form">
+                <span class="close-modal">&times;</span>
+                <h2>Edit Profile</h2>
+                <form id="editProfileForm">
+                    <div class="banner-upload">
+                        <label for="bannerInput" class="banner-preview" style="${profile.banner ? `background-image: url(${profile.banner})` : ''}">
+                            <span>${profile.banner ? 'Change Banner' : 'Add Banner'}</span>
+                        </label>
+                        <input type="file" id="bannerInput" accept="image/*" hidden>
+                    </div>
+                    <div class="profile-picture-upload">
+                        <label for="profilePictureInput" class="profile-picture-preview" style="${profile.profilePicture ? `background-image: url(${profile.profilePicture})` : ''}">
+                            <span>${profile.profilePicture ? 'Change Picture' : 'Add Picture'}</span>
+                        </label>
+                        <input type="file" id="profilePictureInput" accept="image/*" hidden>
+                    </div>
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" value="${profile.username}" maxlength="50" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bio">Bio</label>
+                        <textarea id="bio" maxlength="500">${profile.bio || ''}</textarea>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="submit" class="save-profile-btn">Save Changes</button>
+                        <button type="button" class="cancel-edit-btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        this.positionModal(modal);
+
+        // Setup file input handlers
+        const profilePictureInput = modal.querySelector('#profilePictureInput');
+        const bannerInput = modal.querySelector('#bannerInput');
+        const profilePicturePreview = modal.querySelector('.profile-picture-preview');
+        const bannerPreview = modal.querySelector('.banner-preview');
+
+        // Profile picture upload handler
+        profilePictureInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                LoadingState.show(profilePicturePreview);
+                const mediaUrl = await MediaHandler.handleProfileImageUpload(file, this.account);
+                
+                profilePicturePreview.style.backgroundImage = `url(${mediaUrl})`;
+                profilePicturePreview.innerHTML = '<span>Change Picture</span>';
+                profile.profilePicture = mediaUrl;
+                
+                ErrorHandler.showSuccess('Profile picture updated!', modal.querySelector('.edit-profile-form'));
+            } catch (error) {
+                console.error('Error uploading profile picture:', error);
+                ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
+            } finally {
+                LoadingState.hide(profilePicturePreview);
+            }
+        });
+
+        // Banner upload handler
+        bannerInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                LoadingState.show(bannerPreview);
+                const mediaUrl = await MediaHandler.handleBannerImageUpload(file, this.account);
+                
+                bannerPreview.style.backgroundImage = `url(${mediaUrl})`;
+                bannerPreview.innerHTML = '<span>Change Banner</span>';
+                profile.banner = mediaUrl;
+                
+                ErrorHandler.showSuccess('Banner updated!', modal.querySelector('.edit-profile-form'));
+            } catch (error) {
+                console.error('Error uploading banner:', error);
+                ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
+            } finally {
+                LoadingState.hide(bannerPreview);
+            }
+        });
+
+        const closeModal = () => {
+            document.body.style.overflow = ''; // Restore scrolling
+            modal.remove();
         };
 
-        console.log('Default profile:', defaultProfile);
+        modal.querySelector('.close-modal').addEventListener('click', closeModal);
+        modal.querySelector('.cancel-edit-btn').addEventListener('click', closeModal);
 
-        try {
-            console.log('Attempting to fetch existing profile...');
+        // Form submission handler
+        modal.querySelector('#editProfileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitButton = e.target.querySelector('.save-profile-btn');
+            const username = modal.querySelector('#username').value;
+            const bio = modal.querySelector('#bio').value;
+
             try {
-                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
-                console.log('Existing profile loaded:', response);
+                LoadingState.show(submitButton);
+                await this.updateProfile({
+                    username,
+                    bio,
+                    profilePicture: profile.profilePicture,
+                    banner: profile.banner
+                });
+                ErrorHandler.showSuccess('Profile updated successfully!', document.getElementById('profileContent'));
+                closeModal();
+                // Refresh the profile display
                 await this.loadProfileData();
             } catch (error) {
-                console.log('Profile fetch error:', error);
-                if (error.message.includes('User profile not found')) {
-                    console.log('Creating new profile...');
-                    const newProfile = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                        method: 'POST',
-                        body: JSON.stringify(defaultProfile)
-                    });
-                    console.log('New profile created:', newProfile);
-                    await this.loadProfileData();
-                } else {
-                    throw error;
-                }
+                console.error('Error updating profile:', error);
+                ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
+            } finally {
+                LoadingState.hide(submitButton);
             }
-        } catch (error) {
-            console.error('Error in createOrLoadProfile:', error);
-            throw error;
-        }
+        });
+
+        // Close modal if clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Prevent closing when clicking inside the modal
+        modal.querySelector('.modal-content').addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
     }
 
     async loadProfileData() {
@@ -408,125 +516,7 @@ class WalletConnector {
             LoadingState.hide(document.getElementById('profileContent'));
         }
     }
-    
-// Update the showEditProfileForm method in profile.js
-showEditProfileForm(profile) {
-    console.log('=== Showing Edit Profile Form ===', profile);
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'block';
-    modal.innerHTML = `
-        <div class="modal-content edit-profile-form">
-            <span class="close-modal">&times;</span>
-            <h2>Edit Profile</h2>
-            <form id="editProfileForm">
-                <div class="banner-upload">
-                    <label for="bannerInput" class="banner-preview" style="${profile.banner ? `background-image: url(${profile.banner})` : ''}">
-                        <span>${profile.banner ? 'Change Banner' : 'Add Banner'}</span>
-                    </label>
-                    <input type="file" id="bannerInput" accept="image/*" hidden>
-                </div>
-                <div class="profile-picture-upload">
-                    <label for="profilePictureInput" class="profile-picture-preview" style="${profile.profilePicture ? `background-image: url(${profile.profilePicture})` : ''}">
-                        <span>${profile.profilePicture ? 'Change Picture' : 'Add Picture'}</span>
-                    </label>
-                    <input type="file" id="profilePictureInput" accept="image/*" hidden>
-                </div>
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" value="${profile.username}" maxlength="50" required>
-                </div>
-                <div class="form-group">
-                    <label for="bio">Bio</label>
-                    <textarea id="bio" maxlength="500">${profile.bio || ''}</textarea>
-                </div>
-                <div class="form-buttons">
-                    <button type="submit" class="save-profile-btn">Save Changes</button>
-                    <button type="button" class="cancel-edit-btn">Cancel</button>
-                </div>
-            </form>
-        </div>
-    `;
 
-    document.body.appendChild(modal);
-
-    // Setup file input handlers
-    const profilePictureInput = modal.querySelector('#profilePictureInput');
-    const bannerInput = modal.querySelector('#bannerInput');
-    const profilePicturePreview = modal.querySelector('.profile-picture-preview');
-    const bannerPreview = modal.querySelector('.banner-preview');
-
-    // Profile picture upload handler
-    profilePictureInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        try {
-            LoadingState.show(profilePicturePreview);
-            const mediaUrl = await MediaHandler.handleProfileImageUpload(file, this.account);
-            
-            profilePicturePreview.style.backgroundImage = `url(${mediaUrl})`;
-            profilePicturePreview.innerHTML = '<span>Change Picture</span>';
-            profile.profilePicture = mediaUrl;
-            
-            ErrorHandler.showSuccess('Profile picture updated!', modal.querySelector('.edit-profile-form'));
-        } catch (error) {
-            console.error('Error uploading profile picture:', error);
-            ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
-        } finally {
-            LoadingState.hide(profilePicturePreview);
-        }
-    });
-
-    // Banner upload handler
-    bannerInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        try {
-            LoadingState.show(bannerPreview);
-            const mediaUrl = await MediaHandler.handleBannerImageUpload(file, this.account);
-            
-            bannerPreview.style.backgroundImage = `url(${mediaUrl})`;
-            bannerPreview.innerHTML = '<span>Change Banner</span>';
-            profile.banner = mediaUrl;
-            
-            ErrorHandler.showSuccess('Banner updated!', modal.querySelector('.edit-profile-form'));
-        } catch (error) {
-            console.error('Error uploading banner:', error);
-            ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
-        } finally {
-            LoadingState.hide(bannerPreview);
-        }
-    });
-
-    const closeModal = () => {
-        modal.remove();
-    };
-
-    modal.querySelector('.close-modal').addEventListener('click', closeModal);
-    modal.querySelector('.cancel-edit-btn').addEventListener('click', closeModal);
-
-    modal.querySelector('#editProfileForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = modal.querySelector('#username').value;
-        const bio = modal.querySelector('#bio').value;
-
-        try {
-            await this.updateProfile({
-                username,
-                bio,
-                profilePicture: profile.profilePicture,
-                banner: profile.banner
-            });
-            closeModal();
-        } catch (error) {
-            console.error('Error updating profile:', error);
-            ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
-        }
-    });
-}
-    
     async updateProfile(profileData) {
         console.log('=== Updating Profile ===', profileData);
         try {
@@ -549,54 +539,6 @@ showEditProfileForm(profile) {
                 document.querySelector('.edit-profile-form'));
         } finally {
             LoadingState.hide(document.querySelector('.edit-profile-form'));
-        }
-    }
-    
-    async handleProfilePictureUpload(event) {
-        try {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const profilePicture = document.querySelector('.profile-picture');
-            LoadingState.show(profilePicture);
-
-            const mediaUrl = await MediaHandler.handleProfileImageUpload(file, this.account);
-            
-            profilePicture.style.backgroundImage = `url(${mediaUrl})`;
-            profilePicture.innerHTML = '';
-
-            await this.updateProfile({ profilePicture: mediaUrl });
-            
-            ErrorHandler.showSuccess('Profile picture updated successfully!', document.querySelector('.profile-info'));
-        } catch (error) {
-            console.error('Error uploading profile picture:', error);
-            ErrorHandler.showError(error.message, document.querySelector('.profile-info'));
-        } finally {
-            LoadingState.hide(document.querySelector('.profile-picture'));
-        }
-    }
-
-    async handleBannerUpload(event) {
-        try {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const profileCover = document.querySelector('.profile-cover');
-            LoadingState.show(profileCover);
-
-            const mediaUrl = await MediaHandler.handleBannerImageUpload(file, this.account);
-            
-            profileCover.style.backgroundImage = `url(${mediaUrl})`;
-            profileCover.innerHTML = '';
-
-            await this.updateProfile({ banner: mediaUrl });
-            
-            ErrorHandler.showSuccess('Banner updated successfully!', document.querySelector('.profile-info'));
-        } catch (error) {
-            console.error('Error uploading banner:', error);
-            ErrorHandler.showError(error.message, document.querySelector('.profile-info'));
-        } finally {
-            LoadingState.hide(document.querySelector('.profile-cover'));
         }
     }
 }
