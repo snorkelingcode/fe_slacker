@@ -582,7 +582,7 @@ main {
 }
 
 .delete-post-btn {
-    padding: 0.5rem 1rem;
+    padding: 0.25rem 0.5rem;
     background-color: #dc3545;
     color: white;
     font-weight: 600;
