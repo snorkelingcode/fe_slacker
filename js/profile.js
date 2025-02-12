@@ -409,55 +409,123 @@ class WalletConnector {
         }
     }
     
-    showEditProfileForm(profile) {
-        console.log('=== Showing Edit Profile Form ===', profile);
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.style.display = 'block';
-        modal.innerHTML = `
-            <div class="modal-content edit-profile-form">
-                <span class="close-modal">&times;</span>
-                <h2>Edit Profile</h2>
-                <form id="editProfileForm">
-                    <div class="form-group">
-                        <label for="username">Username</label>
-                        <input type="text" id="username" value="${profile.username}" maxlength="50" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="bio">Bio</label>
-                        <textarea id="bio" maxlength="500">${profile.bio || ''}</textarea>
-                    </div>
-                    <div class="form-buttons">
-                        <button type="submit" class="save-profile-btn">Save Changes</button>
-                        <button type="button" class="cancel-edit-btn">Cancel</button>
-                    </div>
-                </form>
-            </div>
-        `;
-    
-        document.body.appendChild(modal);
-    
-        const closeModal = () => {
-            modal.remove();
-        };
-    
-        modal.querySelector('.close-modal').addEventListener('click', closeModal);
-        modal.querySelector('.cancel-edit-btn').addEventListener('click', closeModal);
-    
-        modal.querySelector('#editProfileForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const username = modal.querySelector('#username').value;
-            const bio = modal.querySelector('#bio').value;
-    
-            try {
-                await this.updateProfile({ username, bio });
-                closeModal();
-            } catch (error) {
-                console.error('Error updating profile:', error);
-                ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
-            }
-        });
-    }
+// Update the showEditProfileForm method in profile.js
+showEditProfileForm(profile) {
+    console.log('=== Showing Edit Profile Form ===', profile);
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'block';
+    modal.innerHTML = `
+        <div class="modal-content edit-profile-form">
+            <span class="close-modal">&times;</span>
+            <h2>Edit Profile</h2>
+            <form id="editProfileForm">
+                <div class="banner-upload">
+                    <label for="bannerInput" class="banner-preview" style="${profile.banner ? `background-image: url(${profile.banner})` : ''}">
+                        <span>${profile.banner ? 'Change Banner' : 'Add Banner'}</span>
+                    </label>
+                    <input type="file" id="bannerInput" accept="image/*" hidden>
+                </div>
+                <div class="profile-picture-upload">
+                    <label for="profilePictureInput" class="profile-picture-preview" style="${profile.profilePicture ? `background-image: url(${profile.profilePicture})` : ''}">
+                        <span>${profile.profilePicture ? 'Change Picture' : 'Add Picture'}</span>
+                    </label>
+                    <input type="file" id="profilePictureInput" accept="image/*" hidden>
+                </div>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" value="${profile.username}" maxlength="50" required>
+                </div>
+                <div class="form-group">
+                    <label for="bio">Bio</label>
+                    <textarea id="bio" maxlength="500">${profile.bio || ''}</textarea>
+                </div>
+                <div class="form-buttons">
+                    <button type="submit" class="save-profile-btn">Save Changes</button>
+                    <button type="button" class="cancel-edit-btn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Setup file input handlers
+    const profilePictureInput = modal.querySelector('#profilePictureInput');
+    const bannerInput = modal.querySelector('#bannerInput');
+    const profilePicturePreview = modal.querySelector('.profile-picture-preview');
+    const bannerPreview = modal.querySelector('.banner-preview');
+
+    // Profile picture upload handler
+    profilePictureInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            LoadingState.show(profilePicturePreview);
+            const mediaUrl = await MediaHandler.handleProfileImageUpload(file, this.account);
+            
+            profilePicturePreview.style.backgroundImage = `url(${mediaUrl})`;
+            profilePicturePreview.innerHTML = '<span>Change Picture</span>';
+            profile.profilePicture = mediaUrl;
+            
+            ErrorHandler.showSuccess('Profile picture updated!', modal.querySelector('.edit-profile-form'));
+        } catch (error) {
+            console.error('Error uploading profile picture:', error);
+            ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
+        } finally {
+            LoadingState.hide(profilePicturePreview);
+        }
+    });
+
+    // Banner upload handler
+    bannerInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            LoadingState.show(bannerPreview);
+            const mediaUrl = await MediaHandler.handleBannerImageUpload(file, this.account);
+            
+            bannerPreview.style.backgroundImage = `url(${mediaUrl})`;
+            bannerPreview.innerHTML = '<span>Change Banner</span>';
+            profile.banner = mediaUrl;
+            
+            ErrorHandler.showSuccess('Banner updated!', modal.querySelector('.edit-profile-form'));
+        } catch (error) {
+            console.error('Error uploading banner:', error);
+            ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
+        } finally {
+            LoadingState.hide(bannerPreview);
+        }
+    });
+
+    const closeModal = () => {
+        modal.remove();
+    };
+
+    modal.querySelector('.close-modal').addEventListener('click', closeModal);
+    modal.querySelector('.cancel-edit-btn').addEventListener('click', closeModal);
+
+    modal.querySelector('#editProfileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = modal.querySelector('#username').value;
+        const bio = modal.querySelector('#bio').value;
+
+        try {
+            await this.updateProfile({
+                username,
+                bio,
+                profilePicture: profile.profilePicture,
+                banner: profile.banner
+            });
+            closeModal();
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
+        }
+    });
+}
     
     async updateProfile(profileData) {
         console.log('=== Updating Profile ===', profileData);
