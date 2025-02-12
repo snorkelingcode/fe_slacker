@@ -1,5 +1,9 @@
 class WalletConnector {
     constructor() {
+        this.init();
+    }
+
+    init() {
         console.log('=== WalletConnector Constructor Start ===');
         this.web3 = null;
         this.account = null;
@@ -12,30 +16,36 @@ class WalletConnector {
         if (profileContent) profileContent.style.display = 'none';
         
         this.setupEventListeners();
+        this.setupSignOutButton(); // Add dedicated sign out setup
         this.checkExistingConnection();
     }
 
-    initializeUI() {
-        console.log('Initializing UI elements...');
-        const walletLogin = document.getElementById('walletLogin');
-        const profileContent = document.getElementById('profileContent');
+    // New dedicated method for sign out button
+    setupSignOutButton() {
         const signOutButton = document.getElementById('signOutButton');
-
-        console.log('Initial elements found:', {
-            walletLogin: !!walletLogin,
-            profileContent: !!profileContent,
-            signOutButton: !!signOutButton
-        });
-
-        if (walletLogin) walletLogin.style.display = 'none';
-        if (profileContent) profileContent.style.display = 'none';
-        if (signOutButton) signOutButton.style.display = 'none';
+        if (signOutButton) {
+            // Remove any existing listeners to prevent duplicates
+            const newSignOutButton = signOutButton.cloneNode(true);
+            signOutButton.parentNode.replaceChild(newSignOutButton, signOutButton);
+            
+            newSignOutButton.addEventListener('click', () => {
+                if (confirm('Are you sure you want to sign out?')) {
+                    console.log('Signing out...');
+                    SessionManager.clearSession();
+                    window.location.href = 'profile.html';
+                }
+            });
+            
+            // Show the button if user is connected
+            if (SessionManager.isConnected()) {
+                newSignOutButton.style.display = 'block';
+            }
+        }
     }
 
     setupEventListeners() {
         const metamaskButton = document.getElementById('metamaskButton');
         const guestButton = document.getElementById('guestButton');
-        const signOutButton = document.getElementById('signOutButton');
         
         if (metamaskButton) {
             metamaskButton.addEventListener('click', async () => {
@@ -81,11 +91,6 @@ class WalletConnector {
                 }
             });
         }
-
-        if (signOutButton) {
-            console.log('Adding sign out button listener');
-            signOutButton.addEventListener('click', () => this.signOut());
-        }
     }
 
     async checkExistingConnection() {
@@ -100,7 +105,6 @@ class WalletConnector {
             console.log('Found existing account:', this.account);
             
             if (isGuest) {
-                // Handle guest user
                 console.log('Guest user detected, loading profile');
                 try {
                     await this.loadProfileData();
@@ -157,14 +161,11 @@ class WalletConnector {
     async connectAsGuest() {
         console.log('=== Connecting as Guest ===');
         try {
-            // Get the persistent guest address for this browser
             this.account = SessionManager.getGuestWalletAddress();
             console.log('Using guest address:', this.account);
     
-            // Set wallet address with guest flag
             SessionManager.setWalletAddress(this.account, true);
     
-            // Create guest profile with identifier
             const guestId = SessionManager.getGuestIdentifier();
             const guestProfile = {
                 walletAddress: this.account,
@@ -183,9 +184,6 @@ class WalletConnector {
                 });
                 console.log('Guest profile created:', response);
     
-                // Guest account is now tracked via localStorage
-    
-                // Redirect to feed page
                 window.location.href = 'index.html';
             } catch (error) {
                 console.error('Error creating guest profile:', error);
@@ -208,7 +206,6 @@ class WalletConnector {
             return;
         }
 
-        // Reset connection state
         await window.ethereum.request({
             method: 'wallet_requestPermissions',
             params: [{ eth_accounts: {} }]
@@ -216,7 +213,6 @@ class WalletConnector {
             console.log('Permissions reset attempted');
         });
 
-        // Wait a moment before attempting connection
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         try {
@@ -269,7 +265,6 @@ class WalletConnector {
         console.log('Default profile:', defaultProfile);
 
         try {
-            // Try to fetch existing profile
             console.log('Attempting to fetch existing profile...');
             try {
                 const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
@@ -277,7 +272,6 @@ class WalletConnector {
                 await this.loadProfileData();
             } catch (error) {
                 console.log('Profile fetch error:', error);
-                // If profile doesn't exist, create new one
                 if (error.message.includes('User profile not found')) {
                     console.log('Creating new profile...');
                     const newProfile = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
@@ -309,13 +303,11 @@ class WalletConnector {
     
             LoadingState.show(profileContent);
     
-            // Fetch user profile
             const profile = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
             console.log('Loaded Profile:', profile);
     
             const isGuest = localStorage.getItem('isGuest') === 'true';
     
-            // Render profile information with guest-specific modifications
             profileContent.innerHTML = `
                 <div class="profile-header">
                     <div class="profile-cover" style="background-color: #e4e6eb">
@@ -342,7 +334,6 @@ class WalletConnector {
                 </div>
             `;
     
-            // Fetch and render user posts
             const userPosts = await makeApiCall(`${API_ENDPOINTS.users}/${this.account.toLowerCase()}/posts`);
             console.log('User posts loaded:', userPosts);
             
@@ -373,7 +364,6 @@ class WalletConnector {
                             body: JSON.stringify({ walletAddress: this.account })
                         });
                         
-                        // Update like count
                         button.innerHTML = `❤️ ${response.likes.length}`;
                     } catch (error) {
                         console.error('Error liking post:', error);
@@ -382,40 +372,6 @@ class WalletConnector {
                 });
             });
     
-            // Add delete button handlers
-            document.querySelectorAll('.delete-post-btn').forEach(button => {
-                button.addEventListener('click', async (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    const post = button.closest('.post');
-                    const postId = post.dataset.postId;
-                    
-                    try {
-                        LoadingState.show(button);
-                        
-                        await makeApiCall(`${API_ENDPOINTS.posts}/${postId}`, {
-                            method: 'DELETE',
-                            body: JSON.stringify({ 
-                                walletAddress: SessionManager.getWalletAddress() 
-                            })
-                        });
-                        
-                        // Remove the post from the UI
-                        post.remove();
-                        
-                        // Show success message
-                        ErrorHandler.showSuccess('Post deleted successfully!', document.querySelector('.posts-container'));
-                    } catch (error) {
-                        console.error('Error deleting post:', error);
-                        ErrorHandler.showError('Failed to delete post', post);
-                    } finally {
-                        LoadingState.hide(button);
-                    }
-                });
-            });
-    
-            // Add comment button handlers
             document.querySelectorAll('.comment-btn').forEach(button => {
                 button.addEventListener('click', (e) => {
                     e.preventDefault();
@@ -427,7 +383,6 @@ class WalletConnector {
                 });
             });
     
-            // Setup edit profile handlers for non-guest users
             if (!isGuest) {
                 const editProfileBtn = profileContent.querySelector('.edit-profile-btn');
                 if (editProfileBtn) {
@@ -441,6 +396,9 @@ class WalletConnector {
                     });
                 }
             }
+
+            // Re-initialize sign out button after profile loads
+            this.setupSignOutButton();
     
         } catch (error) {
             console.error('Error loading profile:', error);
@@ -506,7 +464,6 @@ class WalletConnector {
         try {
             LoadingState.show(document.querySelector('.edit-profile-form'));
             
-            // Update profile in database
             const updatedProfile = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                 method: 'POST',
                 body: JSON.stringify({
@@ -535,14 +492,11 @@ class WalletConnector {
             const profilePicture = document.querySelector('.profile-picture');
             LoadingState.show(profilePicture);
 
-            // Upload profile picture using MediaHandler
             const mediaUrl = await MediaHandler.handleProfileImageUpload(file, this.account);
             
-            // Update the profile picture display
             profilePicture.style.backgroundImage = `url(${mediaUrl})`;
-            profilePicture.innerHTML = ''; // Remove the upload prompt
+            profilePicture.innerHTML = '';
 
-            // Update the profile in the database
             await this.updateProfile({ profilePicture: mediaUrl });
             
             ErrorHandler.showSuccess('Profile picture updated successfully!', document.querySelector('.profile-info'));
@@ -562,14 +516,11 @@ class WalletConnector {
             const profileCover = document.querySelector('.profile-cover');
             LoadingState.show(profileCover);
 
-            // Upload banner using MediaHandler
             const mediaUrl = await MediaHandler.handleBannerImageUpload(file, this.account);
             
-            // Update the banner display
             profileCover.style.backgroundImage = `url(${mediaUrl})`;
-            profileCover.innerHTML = ''; // Remove the upload prompt
+            profileCover.innerHTML = '';
 
-            // Update the profile in the database
             await this.updateProfile({ banner: mediaUrl });
             
             ErrorHandler.showSuccess('Banner updated successfully!', document.querySelector('.profile-info'));
@@ -580,22 +531,10 @@ class WalletConnector {
             LoadingState.hide(document.querySelector('.profile-cover'));
         }
     }
+}
 
-}    
-    // Initialize when page loads
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM loaded, initializing WalletConnector...');
-        new WalletConnector();
-    });
-
-
-
-
-
-
-
-
-
-
-
-                
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing WalletConnector...');
+    new WalletConnector();
+});
