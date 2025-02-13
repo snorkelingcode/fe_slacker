@@ -302,7 +302,7 @@ class WalletConnector {
                 <form id="editProfileForm">
                     <div class="banner-upload">
                         <label for="bannerInput" class="banner-preview" ${profile.bannerPicture ? `style="background-image: url('${profile.bannerPicture}')"` : ''}>
-                            <span>${profile.bannerPicture ? 'Change Banner' : ''}</span>
+                            <span>${profile.bannerPicture ? 'Change Banner' : 'Add Banner'}</span>
                         </label>
                         <input type="file" id="bannerInput" accept="image/*" hidden>
                     </div>
@@ -466,7 +466,7 @@ class WalletConnector {
             profileContent.innerHTML = `
                 <div class="profile-header">
                     <div class="profile-cover" style="${profile.bannerPicture ? `background-image: url('${profile.bannerPicture}')` : 'background-color: #e4e6eb'}">
-                        ${isGuest ? '<span></span>' : '<span>Add Banner</span>'}
+                        ${isGuest ? '<span></span>' : '<span></span>'}
                     </div>
                     <div class="profile-info">
                         <div class="profile-picture" style="${profile.profilePicture ? `background-image: url('${profile.profilePicture}')` : 'background-color: #e4e6eb'}">
