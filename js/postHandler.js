@@ -310,14 +310,7 @@ async handleLike(postId) {
                 </div>
                 <div class="post-content">
                     <p>${this.formatPostContent(post.content)}</p>
-                    ${post.mediaUrl ? `
-                        <div class="post-media-container">
-                            ${post.mediaType === 'video' 
-                                ? `<video src="${post.mediaUrl}" controls class="post-media"></video>`
-                                : `<img src="${post.mediaUrl}" alt="Post image" class="post-media">`
-                            }
-                        </div>
-                    ` : ''}
+                    ${this.renderMedia(post)}
                 </div>
                 <div class="post-interactions">
                     <button class="interaction-btn like-btn" data-post-id="${post.id}">
@@ -327,6 +320,19 @@ async handleLike(postId) {
                         💬 ${post.comments ? post.comments.length : 0}
                     </button>
                 </div>
+            </div>
+        `;
+    }
+    
+    renderMedia(item) {
+        if (!item.mediaUrl) return '';
+        
+        return `
+            <div class="post-media-container">
+                ${item.mediaType === 'video' 
+                    ? `<video src="${item.mediaUrl}" controls class="post-media"></video>`
+                    : `<img src="${item.mediaUrl}" alt="Post media" class="post-media">`
+                }
             </div>
         `;
     }
