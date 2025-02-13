@@ -301,13 +301,13 @@ class WalletConnector {
                 <h2>Edit Profile</h2>
                 <form id="editProfileForm">
                     <div class="banner-upload">
-                        <label for="bannerInput" class="banner-preview" style="${profile.banner ? `background-image: url(${profile.banner})` : ''}">
-                            <span>${profile.banner ? 'Change Banner' : 'Add Banner'}</span>
+                        <label for="bannerInput" class="banner-preview" ${profile.bannerPicture ? `style="background-image: url('${profile.bannerPicture}')"` : ''}>
+                            <span>${profile.bannerPicture ? 'Change Banner' : 'Add Banner'}</span>
                         </label>
                         <input type="file" id="bannerInput" accept="image/*" hidden>
                     </div>
                     <div class="profile-picture-upload">
-                        <label for="profilePictureInput" class="profile-picture-preview" style="${profile.profilePicture ? `background-image: url(${profile.profilePicture})` : ''}">
+                        <label for="profilePictureInput" class="profile-picture-preview" ${profile.profilePicture ? `style="background-image: url('${profile.profilePicture}')"` : ''}>
                             <span>${profile.profilePicture ? 'Change Picture' : 'Add Picture'}</span>
                         </label>
                         <input type="file" id="profilePictureInput" accept="image/*" hidden>
@@ -327,28 +327,39 @@ class WalletConnector {
                 </form>
             </div>
         `;
-
+    
         document.body.appendChild(modal);
         this.positionModal(modal);
-
+    
         // Setup file input handlers
         const profilePictureInput = modal.querySelector('#profilePictureInput');
         const bannerInput = modal.querySelector('#bannerInput');
         const profilePicturePreview = modal.querySelector('.profile-picture-preview');
         const bannerPreview = modal.querySelector('.banner-preview');
-
+    
         // Profile picture upload handler
         profilePictureInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
+    
             try {
                 LoadingState.show(profilePicturePreview);
-                const mediaUrl = await MediaHandler.handleProfileImageUpload(file, this.account);
                 
-                profilePicturePreview.style.backgroundImage = `url(${mediaUrl})`;
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('walletAddress', this.account);
+    
+                const response = await fetch(`${API_ENDPOINTS.users}/profile/picture`, {
+                    method: 'POST',
+                    body: formData
+                });
+    
+                if (!response.ok) throw new Error('Failed to upload profile picture');
+                
+                const data = await response.json();
+                profilePicturePreview.style.backgroundImage = `url('${data.url}')`;
                 profilePicturePreview.innerHTML = '<span>Change Picture</span>';
-                profile.profilePicture = mediaUrl;
+                profile.profilePicture = data.url;
                 
                 ErrorHandler.showSuccess('Profile picture updated!', modal.querySelector('.edit-profile-form'));
             } catch (error) {
@@ -358,19 +369,30 @@ class WalletConnector {
                 LoadingState.hide(profilePicturePreview);
             }
         });
-
+    
         // Banner upload handler
         bannerInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
+    
             try {
                 LoadingState.show(bannerPreview);
-                const mediaUrl = await MediaHandler.handleBannerImageUpload(file, this.account);
                 
-                bannerPreview.style.backgroundImage = `url(${mediaUrl})`;
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('walletAddress', this.account);
+    
+                const response = await fetch(`${API_ENDPOINTS.users}/profile/banner`, {
+                    method: 'POST',
+                    body: formData
+                });
+    
+                if (!response.ok) throw new Error('Failed to upload banner');
+                
+                const data = await response.json();
+                bannerPreview.style.backgroundImage = `url('${data.url}')`;
                 bannerPreview.innerHTML = '<span>Change Banner</span>';
-                profile.banner = mediaUrl;
+                profile.bannerPicture = data.url;
                 
                 ErrorHandler.showSuccess('Banner updated!', modal.querySelector('.edit-profile-form'));
             } catch (error) {
@@ -380,34 +402,36 @@ class WalletConnector {
                 LoadingState.hide(bannerPreview);
             }
         });
-
+    
         const closeModal = () => {
-            document.body.style.overflow = ''; // Restore scrolling
+            document.body.style.overflow = '';
             modal.remove();
         };
-
+    
         modal.querySelector('.close-modal').addEventListener('click', closeModal);
         modal.querySelector('.cancel-edit-btn').addEventListener('click', closeModal);
-
+    
         // Form submission handler
         modal.querySelector('#editProfileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitButton = e.target.querySelector('.save-profile-btn');
             const username = modal.querySelector('#username').value;
             const bio = modal.querySelector('#bio').value;
-
+    
             try {
                 LoadingState.show(submitButton);
                 await this.updateProfile({
                     username,
                     bio,
                     profilePicture: profile.profilePicture,
-                    banner: profile.banner
+                    bannerPicture: profile.bannerPicture
                 });
-                ErrorHandler.showSuccess('Profile updated successfully!', document.getElementById('profileContent'));
-                closeModal();
-                // Refresh the profile display
+                
+                // Update the profile display on the page
                 await this.loadProfileData();
+                
+                closeModal();
+                ErrorHandler.showSuccess('Profile updated successfully!', document.getElementById('profileContent'));
             } catch (error) {
                 console.error('Error updating profile:', error);
                 ErrorHandler.showError(error.message, modal.querySelector('.edit-profile-form'));
@@ -415,17 +439,9 @@ class WalletConnector {
                 LoadingState.hide(submitButton);
             }
         });
-
-        // Close modal if clicking outside
+    
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
-        });
-
-        // Prevent closing when clicking inside the modal
-        modal.querySelector('.modal-content').addEventListener('click', (e) => {
-            e.stopPropagation();
+            if (e.target === modal) closeModal();
         });
     }
 
@@ -449,12 +465,12 @@ class WalletConnector {
     
             profileContent.innerHTML = `
                 <div class="profile-header">
-                    <div class="profile-cover" style="background-color: #e4e6eb">
+                    <div class="profile-cover" style="${profile.bannerPicture ? `background-image: url('${profile.bannerPicture}')` : 'background-color: #e4e6eb'}">
                         ${isGuest ? '<span></span>' : '<span>Add Banner</span>'}
                     </div>
                     <div class="profile-info">
-                        <div class="profile-picture" style="background-color: #e4e6eb">
-                            ${isGuest ? '👤' : '<span>Add Profile Picture</span>'}
+                        <div class="profile-picture" style="${profile.profilePicture ? `background-image: url('${profile.profilePicture}')` : 'background-color: #e4e6eb'}">
+                            ${profile.profilePicture ? '' : (isGuest ? '👤' : '<span>Add Profile Picture</span>')}
                         </div>
                         <h2 class="profile-name">${profile.username}</h2>
                         <p class="profile-wallet">${this.account}</p>
@@ -535,7 +551,7 @@ class WalletConnector {
                     });
                 }
             }
-
+    
             // Re-initialize sign out button after profile loads
             this.setupSignOutButton();
     
