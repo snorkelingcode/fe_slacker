@@ -225,6 +225,7 @@ main {
 /* Post Button */
 .post-button {
     min-width: 80px;
+    margin-bottom: -80px;
 }
 
 /* Media Button */
