@@ -386,14 +386,21 @@ main {
     border-radius: 8px;
     overflow: hidden;
     width: 100%;
+    max-width: 600px; /* Control maximum width */
     display: flex;
     justify-content: center;
+    align-items: center;
+    margin-left: auto;
+    margin-right: auto;
     background: none;
 }
 
 .post-media {
     width: 100%;
+    max-width: 600px; /* Match container max-width */
+    max-height: 400px; /* Control maximum height */
     border-radius: 8px;
+    object-fit: contain;
     background: none;
 }
 
@@ -490,12 +497,19 @@ video.post-media {
     margin: 0;
     position: relative;
     width: 100%;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .media-preview-content {
     width: 100%;
+    max-width: 600px;
+    max-height: 400px;
     border-radius: 8px;
+    object-fit: contain;
     display: block;
+    margin: 0 auto;
 }
 
 .media-preview-content[src$=".mp4"],
