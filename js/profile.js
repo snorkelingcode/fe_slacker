@@ -302,7 +302,7 @@ class WalletConnector {
                 <form id="editProfileForm">
                     <div class="banner-upload">
                         <label for="bannerInput" class="banner-preview" ${profile.bannerPicture ? `style="background-image: url('${profile.bannerPicture}')"` : ''}>
-                            <span>${profile.bannerPicture ? 'Change Banner' : 'Add Banner'}</span>
+                            <span>${profile.bannerPicture ? 'Change Banner' : ''}</span>
                         </label>
                         <input type="file" id="bannerInput" accept="image/*" hidden>
                     </div>

@@ -133,6 +133,14 @@ main {
     margin-top: -84px;
     position: relative;
     overflow: hidden;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #65676b;
+    font-size: 4rem;
 }
 
 .profile-picture img {
@@ -242,6 +250,7 @@ main {
     background-color: #e4e6eb;
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -541,6 +550,12 @@ main {
         width: 120px;
         height: 120px;
         margin-top: -60px;
+        font-size: 3rem;
+    }
+
+    .profile-picture-preview {
+        width: 120px;
+        height: 120px;
     }
 
     .profile-actions {
@@ -815,11 +830,20 @@ main {
 }
 
 .profile-picture {
+    width: 168px;
+    height: 168px;
+    border-radius: 50%;
+    background-color: #e4e6eb;
+    border: 4px solid white;
+    margin-top: -84px;
+    position: relative;
+    overflow: hidden;
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 4rem;
-    color: #65676b;
 }
 
 .no-posts {
