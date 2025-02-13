@@ -386,7 +386,6 @@ main {
     border-radius: 8px;
     overflow: hidden;
     width: 100%;
-    max-width: 800px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -395,15 +394,14 @@ main {
 
 .post-media {
     width: 100%;
-    max-width: 800px;
-    max-height: 350px;
+    max-width: 100%;
     border-radius: 8px;
-    object-fit: contain;
+    display: block;
 }
 
 video.post-media {
-    max-width: 100%;
-    height: auto;
+    aspect-ratio: 16/9;
+    background: black;
 }
 
 .post-footer {
@@ -537,11 +535,16 @@ video.post-media {
 }
 
 .media-button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.8rem;
     background-color: #1877f2;
     color: white;
     border: none;
-    display: flex;
-    align-items: center;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
 }
 
 .media-button:hover {
@@ -615,13 +618,14 @@ video.post-media {
 }
 
 .delete-post-btn {
-    padding: 0.3rem 0.6rem;
-    font-size: 0.8rem;
-    border-radius: 4px;
+    padding: 0.4rem 0.8rem;
     background-color: #dc3545;
     color: white;
     border: none;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s;
 }
 
 .delete-post-btn:hover {
@@ -629,10 +633,15 @@ video.post-media {
 }
 
 .post-button {
+    padding: 0.4rem 0.8rem;
     background-color: #1877f2;
     color: white;
     border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
     min-width: 60px;
+    transition: background-color 0.2s;
 }
 
 .post-button:hover {
@@ -641,11 +650,14 @@ video.post-media {
 /* For like and comment buttons */
 .interaction-btn {
     padding: 0.4rem 0.8rem;
-    font-size: 0.85rem;
-    margin-right: 0.5rem;
-    background-color: #e4e6eb;
-    color: #050505;
+    background-color: #1877f2;
+    color: white;
     border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-right: 0.5rem;
+    transition: background-color 0.2s;
 }
 
 .interaction-btn:hover {
@@ -861,4 +873,22 @@ video.post-media {
 .media-preview-content,
 video.post-media {
     background: none !important;
+}
+
+/* Like and comment counts */
+.post-interactions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+/* Count badges */
+.like-count,
+.comment-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: #1877f2;
+    font-size: 0.9rem;
 }
