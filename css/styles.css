@@ -386,17 +386,20 @@ main {
     border-radius: 8px;
     overflow: hidden;
     width: 100%;
-    max-width: 100%;
     display: flex;
     justify-content: center;
+    background: none;
 }
 
 .post-media {
     width: 100%;
-    max-height: 500px;
-    object-fit: contain;
     border-radius: 8px;
-    background-color: #000;
+    background: none;
+}
+
+video.post-media {
+    max-width: 100%;
+    height: auto;
 }
 
 .post-footer {
@@ -484,15 +487,15 @@ main {
 }
 
 .media-preview {
-    margin: 0rem;
+    margin: 0;
     position: relative;
+    width: 100%;
 }
 
 .media-preview-content {
-    max-width: 100%;
-    max-height: 300px;
+    width: 100%;
     border-radius: 8px;
-    object-fit: contain;
+    display: block;
 }
 
 .media-preview-content[src$=".mp4"],
@@ -865,4 +868,11 @@ main {
     background-color: white;
     border-radius: 8px;
     margin-top: 1rem;
+}
+
+.post-media-container,
+.post-media,
+.media-preview-content,
+video.post-media {
+    background: none !important;
 }
