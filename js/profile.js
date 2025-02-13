@@ -156,6 +156,31 @@ class WalletConnector {
         if (signOutButton) signOutButton.style.display = 'none';
     }
 
+    async createOrLoadProfile() {
+        try {
+            // First try to load existing profile
+            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
+            console.log('Existing profile loaded:', response);
+            return response;
+        } catch (error) {
+            // If profile doesn't exist, create a new one
+            console.log('Creating new profile...');
+            const newProfile = {
+                walletAddress: this.account.toLowerCase(),
+                username: `User_${this.account.substring(2, 6)}`,
+                bio: 'New to Slacker'
+            };
+    
+            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                method: 'POST',
+                body: JSON.stringify(newProfile)
+            });
+            
+            console.log('New profile created:', response);
+            return response;
+        }
+    }    
+
     async connectAsGuest() {
         console.log('=== Connecting as Guest ===');
         try {
@@ -203,7 +228,7 @@ class WalletConnector {
             }, 2000);
             return;
         }
-
+    
         try {
             console.log('Requesting MetaMask accounts...');
             const accounts = await window.ethereum.request({ 
@@ -214,23 +239,29 @@ class WalletConnector {
             if (!accounts || accounts.length === 0) {
                 throw new Error('No accounts found');
             }
-
+    
             this.account = accounts[0];
             this.web3 = new Web3(window.ethereum);
-
+    
             console.log('Setting wallet address in session:', this.account);
             SessionManager.setWalletAddress(this.account);
-
+    
             try {
                 console.log('Creating/loading profile...');
                 await this.createOrLoadProfile();
-                console.log('Profile handled successfully, redirecting...');
-                window.location.href = 'index.html';
+                console.log('Profile handled successfully');
+                
+                // Add a small delay before redirect to ensure session is saved
+                setTimeout(() => {
+                    console.log('Redirecting to feed...');
+                    window.location.href = 'index.html';
+                }, 500);
+                
             } catch (error) {
                 console.error('Error handling profile:', error);
                 ErrorHandler.showError(error.message, document.getElementById('profileContent'));
             }
-
+    
         } catch (error) {
             console.error('MetaMask connection error:', error);
             if (error.code === -32002) {
