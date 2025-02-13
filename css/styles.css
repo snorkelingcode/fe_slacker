@@ -641,6 +641,7 @@ video.post-media {
     cursor: pointer;
     font-size: 0.9rem;
     min-width: 60px;
+    margin-bottom: -80;
     transition: background-color 0.2s;
 }
 
