@@ -120,31 +120,42 @@ class ModuleHandler {
         this.setupModuleDragging(module);
     }
 
-    async setTheme(theme) {
-        try {
-            this.currentTheme = theme;
-            this.applyTheme(theme);
-            localStorage.setItem('theme', theme);
+// In moduleHandler.js, update the setTheme method
+async setTheme(theme) {
+    try {
+        this.currentTheme = theme;
+        this.applyTheme(theme);
+        localStorage.setItem('theme', theme);
 
-            // Save theme to user profile if logged in
-            const walletAddress = SessionManager.getWalletAddress();
-            if (walletAddress) {
-                await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        walletAddress,
-                        theme
-                    })
-                });
-            }
-
-            // Show success message
-            ErrorHandler.showSuccess('Theme updated successfully!', this.container);
-        } catch (error) {
-            console.error('Error setting theme:', error);
-            ErrorHandler.showError('Failed to update theme', this.container);
+        // Save theme to user profile if logged in
+        const walletAddress = SessionManager.getWalletAddress();
+        if (walletAddress) {
+            // First get the current user profile
+            const userResponse = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
+            
+            // Then update with all required fields plus new theme
+            await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    walletAddress,
+                    username: userResponse.username || `User_${walletAddress.substring(2, 6)}`,
+                    bio: userResponse.bio || 'New to Slacker',
+                    theme: theme
+                })
+            });
         }
+
+        // Show success message
+        ErrorHandler.showSuccess('Theme updated successfully!', this.container);
+    } catch (error) {
+        console.error('Error setting theme:', error);
+        ErrorHandler.showError('Failed to update theme', this.container);
+        
+        // Revert theme in localStorage if backend update fails
+        const previousTheme = localStorage.getItem('theme') || 'light';
+        this.applyTheme(previousTheme);
     }
+}
 
     applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
