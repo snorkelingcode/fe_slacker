@@ -18,6 +18,24 @@
     </nav>
     <main>
         <div id="feedContent"></div>
+        <div id="moduleContainer" class="module-container"></div>
+        <button id="addModuleButton" class="add-module-btn">
+            <span>+</span>
+        </button>
+        <div id="moduleModal" class="module-modal">
+            <button class="module-option" data-type="music">
+                <span>🎵</span> Music
+            </button>
+            <button class="module-option" data-type="ai">
+                <span>🤖</span> AI
+            </button>
+            <button class="module-option" data-type="market">
+                <span>📈</span> Market
+            </button>
+            <button class="module-option" data-type="settings">
+                <span>⚙️</span> Settings
+            </button>
+        </div>
     </main>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.6.0/web3.min.js"></script>
     <script src="js/config.js"></script>
@@ -25,5 +43,6 @@
     <script src="js/session.js"></script>
     <script src="js/postHandler.js"></script>
     <script src="js/feed.js"></script>
+    <script src="js/moduleHandler.js"></script>
 </body>
 </html>
