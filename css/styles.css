@@ -451,7 +451,7 @@ video.post-media {
 }
 /*banner*/
 .profile-cover {
-    height: 400px; /* Increased from 200px */
+    height: 350px; /* Increased from 200px */
     width: 100%;
     background-color: var(--bg-secondary);
     background-size: cover;
