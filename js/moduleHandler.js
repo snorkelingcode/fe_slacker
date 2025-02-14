@@ -1,32 +1,71 @@
-// moduleHandler.js
 class ModuleHandler {
     constructor() {
         this.draggedModule = null;
         this.isDragging = false;
-        this.currentX = 0;
-        this.currentY = 0;
-        this.xOffset = 0;
-        this.yOffset = 0;
-
+        this.modules = new Map(); // Track active modules
+        
         this.addButton = document.getElementById('addModuleButton');
         this.modal = document.getElementById('moduleModal');
         this.container = document.getElementById('moduleContainer');
 
-        // Initialize theme from localStorage
+        // Load saved theme immediately
         this.currentTheme = localStorage.getItem('theme') || 'light';
-        this.applyTheme(this.currentTheme);
+        document.documentElement.setAttribute('data-theme', this.currentTheme);
 
         this.setupEventListeners();
+        this.loadSavedModules();
+    }
+
+    saveModuleState() {
+        const moduleStates = Array.from(this.modules.entries()).map(([id, module]) => {
+            const rect = module.getBoundingClientRect();
+            return {
+                id,
+                type: module.dataset.type,
+                position: {
+                    x: rect.left,
+                    y: rect.top
+                }
+            };
+        });
+        localStorage.setItem('moduleStates', JSON.stringify(moduleStates));
+    }
+
+    loadSavedModules() {
+        try {
+            const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
+            savedStates.forEach(state => {
+                this.createModule(state.type, state.position, state.id);
+            });
+        } catch (error) {
+            console.error('Error loading saved modules:', error);
+        }
+    }
+
+    async initializeTheme() {
+        try {
+            const walletAddress = SessionManager.getWalletAddress();
+            if (walletAddress) {
+                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
+                if (response && response.theme) {
+                    this.currentTheme = response.theme;
+                    localStorage.setItem('theme', response.theme);
+                    this.applyTheme(response.theme);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading user theme:', error);
+        }
     }
 
     setupEventListeners() {
-        // Add button click handler
+        if (!this.addButton || !this.modal) return;
+
         this.addButton.addEventListener('click', (e) => {
             e.stopPropagation();
             this.modal.classList.toggle('active');
         });
 
-        // Module option click handlers
         document.querySelectorAll('.module-option').forEach(option => {
             option.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -35,61 +74,78 @@ class ModuleHandler {
             });
         });
 
-        // Close modal when clicking outside
         document.addEventListener('click', (e) => {
             if (!this.modal.contains(e.target) && !this.addButton.contains(e.target)) {
                 this.modal.classList.remove('active');
             }
         });
+
+        // Save module states before page unload
+        window.addEventListener('beforeunload', () => {
+            this.saveModuleState();
+        });
     }
 
-    createModule(type) {
+    createModule(type, position = null, id = null) {
+        const moduleId = id || `module-${Date.now()}`;
         const module = document.createElement('div');
         module.className = 'module';
-        
-        // Set initial position with some randomness
-        const initialX = Math.random() * (window.innerWidth - 420);
-        const initialY = Math.random() * (window.innerHeight - 200);
-        module.style.transform = `translate(${initialX}px, ${initialY}px)`;
+        module.dataset.type = type;
+        module.id = moduleId;
 
-        const titles = {
-            music: 'Music Player',
-            ai: 'AI Chat',
-            market: 'Crypto Market',
-            settings: 'Settings'
-        };
+        // Set position
+        if (position) {
+            module.style.transform = `translate(${position.x}px, ${position.y}px)`;
+        } else {
+            const initialX = Math.random() * (window.innerWidth - 420);
+            const initialY = Math.random() * (window.innerHeight - 200);
+            module.style.transform = `translate(${initialX}px, ${initialY}px)`;
+        }
 
-        // Special content for settings module
         let content = '';
-        if (type === 'settings') {
-            content = `
-                <div class="settings-content">
-                    <div class="settings-section">
-                        <h3 class="settings-title">Theme</h3>
-                        <div class="theme-switcher">
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="light" ${this.currentTheme === 'light' ? 'checked' : ''}>
-                                <span>☀️ Light Mode</span>
-                            </label>
-                            <label class="theme-option">
-                                <input type="radio" name="theme" value="dark" ${this.currentTheme === 'dark' ? 'checked' : ''}>
-                                <span>🌙 Dark Mode</span>
-                            </label>
+        let moduleTitle = '';
+
+        switch (type) {
+            case 'settings':
+                moduleTitle = 'Settings';
+                content = `
+                    <div class="settings-content">
+                        <div class="settings-section">
+                            <h3 class="settings-title">Theme</h3>
+                            <div class="theme-switcher">
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="light" ${this.currentTheme === 'light' ? 'checked' : ''}>
+                                    <span>☀️ Light Mode</span>
+                                </label>
+                                <label class="theme-option">
+                                    <input type="radio" name="theme" value="dark" ${this.currentTheme === 'dark' ? 'checked' : ''}>
+                                    <span>🌙 Dark Mode</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
-        } else {
-            content = `
-                ${type === 'music' ? 'SoundCloud Widget Coming Soon' : ''}
-                ${type === 'ai' ? 'ChatGPT Integration Coming Soon' : ''}
-                ${type === 'market' ? 'Crypto Prices Coming Soon' : ''}
-            `;
+                `;
+                break;
+            case 'music':
+                moduleTitle = 'Music Player';
+                content = 'SoundCloud Widget Coming Soon';
+                break;
+            case 'ai':
+                moduleTitle = 'AI Chat';
+                content = 'ChatGPT Integration Coming Soon';
+                break;
+            case 'market':
+                moduleTitle = 'Crypto Market';
+                content = 'Crypto Prices Coming Soon';
+                break;
+            default:
+                moduleTitle = 'Module';
+                content = 'Content Coming Soon';
         }
 
         module.innerHTML = `
             <div class="module-header">
-                <div class="module-title">${titles[type]}</div>
+                <div class="module-title">${moduleTitle}</div>
                 <button class="module-close">×</button>
             </div>
             <div class="module-content">
@@ -98,12 +154,15 @@ class ModuleHandler {
         `;
 
         this.container.appendChild(module);
+        this.modules.set(moduleId, module);
 
         // Setup close button
         const closeButton = module.querySelector('.module-close');
         closeButton.addEventListener('click', (e) => {
             e.stopPropagation();
+            this.modules.delete(moduleId);
             module.remove();
+            this.saveModuleState();
         });
 
         // Setup theme switcher if it's a settings module
@@ -111,51 +170,52 @@ class ModuleHandler {
             const themeInputs = module.querySelectorAll('input[name="theme"]');
             themeInputs.forEach(input => {
                 input.addEventListener('change', async (e) => {
-                    const newTheme = e.target.value;
-                    await this.setTheme(newTheme);
+                    await this.setTheme(e.target.value);
                 });
             });
         }
 
         this.setupModuleDragging(module);
+        this.saveModuleState();
+        return module;
     }
 
-// In moduleHandler.js, update the setTheme method
-async setTheme(theme) {
-    try {
-        this.currentTheme = theme;
-        this.applyTheme(theme);
-        localStorage.setItem('theme', theme);
+    async setTheme(theme) {
+        try {
+            this.currentTheme = theme;
+            localStorage.setItem('theme', theme);
+            this.applyTheme(theme);
 
-        // Save theme to user profile if logged in
-        const walletAddress = SessionManager.getWalletAddress();
-        if (walletAddress) {
-            // First get the current user profile
-            const userResponse = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
-            
-            // Then update with all required fields plus new theme
-            await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    walletAddress,
-                    username: userResponse.username || `User_${walletAddress.substring(2, 6)}`,
-                    bio: userResponse.bio || 'New to Slacker',
-                    theme: theme
-                })
-            });
+            const walletAddress = SessionManager.getWalletAddress();
+            if (walletAddress) {
+                try {
+                    const userResponse = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
+                    await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            walletAddress,
+                            username: userResponse.username,
+                            bio: userResponse.bio || 'New to Slacker',
+                            theme: theme,
+                            profilePicture: userResponse.profilePicture,
+                            bannerPicture: userResponse.bannerPicture
+                        })
+                    });
+                    ErrorHandler.showSuccess('Theme updated successfully!', this.container);
+                } catch (error) {
+                    console.error('Error updating theme on server:', error);
+                    // Still keep the theme locally even if server update fails
+                }
+            }
+        } catch (error) {
+            console.error('Error setting theme:', error);
+            ErrorHandler.showError('Failed to update theme', this.container);
+
+            // Revert theme in localStorage if update fails
+            const previousTheme = localStorage.getItem('theme') || 'light';
+            this.applyTheme(previousTheme);
         }
-
-        // Show success message
-        ErrorHandler.showSuccess('Theme updated successfully!', this.container);
-    } catch (error) {
-        console.error('Error setting theme:', error);
-        ErrorHandler.showError('Failed to update theme', this.container);
-        
-        // Revert theme in localStorage if backend update fails
-        const previousTheme = localStorage.getItem('theme') || 'light';
-        this.applyTheme(previousTheme);
     }
-}
 
     applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
@@ -166,8 +226,6 @@ async setTheme(theme) {
         let currentY = 0;
         let initialX = 0;
         let initialY = 0;
-        let xOffset = 0;
-        let yOffset = 0;
         let isDragging = false;
 
         const handleMouseDown = (e) => {
@@ -203,6 +261,7 @@ async setTheme(theme) {
             initialY = currentY;
             isDragging = false;
             module.classList.remove('dragging');
+            this.saveModuleState();
         };
 
         module.addEventListener('mousedown', handleMouseDown);
@@ -211,12 +270,7 @@ async setTheme(theme) {
     }
 }
 
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', () => {
-    new ModuleHandler();
-});
-
-// Additional styles for the modules
+// Additional styles
 const additionalStyles = `
 .settings-section {
     padding: 10px;
@@ -252,59 +306,15 @@ const additionalStyles = `
 .settings-content {
     width: 100%;
 }
-
-.module {
-    position: absolute;
-    background: var(--bg-secondary);
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    min-width: 300px;
-    max-width: 500px;
-    overflow: hidden;
-    cursor: move;
-}
-
-.module-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
-}
-
-.module-title {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.module-close {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 18px;
-    padding: 4px 8px;
-    border-radius: 4px;
-}
-
-.module-close:hover {
-    background-color: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
-.module-content {
-    padding: 16px;
-    color: var(--text-primary);
-}
-
-.module.dragging {
-    opacity: 0.8;
-    cursor: grabbing;
-}
 `;
 
 // Add the styles to the document
 const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    const moduleHandler = new ModuleHandler();
+    await moduleHandler.initializeTheme();
+});
