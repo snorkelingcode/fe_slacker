@@ -11,6 +11,10 @@ class ModuleHandler {
         this.modal = document.getElementById('moduleModal');
         this.container = document.getElementById('moduleContainer');
 
+        // Initialize theme
+        this.currentTheme = localStorage.getItem('theme') || 'light';
+        this.applyTheme(this.currentTheme);
+
         this.setupEventListeners();
     }
 
@@ -43,8 +47,8 @@ class ModuleHandler {
         module.className = 'module';
         
         // Set initial position
-        const initialX = Math.random() * (window.innerWidth - 520); // 320 is module width
-        const initialY = Math.random() * (window.innerHeight - 300); // 200 is approx module height
+        const initialX = Math.random() * (window.innerWidth - 420); // Account for module width
+        const initialY = Math.random() * (window.innerHeight - 200); // Account for approximate module height
         module.style.transform = `translate(${initialX}px, ${initialY}px)`;
 
         const titles = {
@@ -54,16 +58,41 @@ class ModuleHandler {
             settings: 'Settings'
         };
 
+        // Special content for settings module
+        let content = '';
+        if (type === 'settings') {
+            content = `
+                <div class="settings-content">
+                    <div class="settings-section">
+                        <h3 class="settings-title">Theme</h3>
+                        <div class="theme-switcher">
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="light" ${this.currentTheme === 'light' ? 'checked' : ''}>
+                                Light Mode
+                            </label>
+                            <label class="theme-option">
+                                <input type="radio" name="theme" value="dark" ${this.currentTheme === 'dark' ? 'checked' : ''}>
+                                Dark Mode
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            content = `
+                ${type === 'music' ? 'SoundCloud Widget Coming Soon' : ''}
+                ${type === 'ai' ? 'ChatGPT Integration Coming Soon' : ''}
+                ${type === 'market' ? 'Crypto Prices Coming Soon' : ''}
+            `;
+        }
+
         module.innerHTML = `
             <div class="module-header">
                 <div class="module-title">${titles[type]}</div>
                 <button class="module-close">×</button>
             </div>
             <div class="module-content">
-                ${type === 'music' ? 'SoundCloud Widget Coming Soon' : ''}
-                ${type === 'ai' ? 'ChatGPT Integration Coming Soon' : ''}
-                ${type === 'market' ? 'Crypto Prices Coming Soon' : ''}
-                ${type === 'settings' ? 'Theme Settings Coming Soon' : ''}
+                ${content}
             </div>
         `;
 
@@ -75,6 +104,19 @@ class ModuleHandler {
             e.stopPropagation();
             module.remove();
         });
+
+        // Setup theme switcher if it's a settings module
+        if (type === 'settings') {
+            const themeInputs = module.querySelectorAll('input[name="theme"]');
+            themeInputs.forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const newTheme = e.target.value;
+                    this.applyTheme(newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    this.currentTheme = newTheme;
+                });
+            });
+        }
 
         this.setupModuleDragging(module);
     }
@@ -128,9 +170,55 @@ class ModuleHandler {
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
     }
+
+    applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+    }
 }
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
     new ModuleHandler();
 });
+
+const additionalStyles = `
+.settings-section {
+    padding: 10px;
+}
+
+.settings-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+.theme-switcher {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.theme-option:hover {
+    background-color: var(--bg-primary);
+}
+
+.settings-content {
+    width: 100%;
+}
+`;
+
+// Add the additional styles to the document
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
