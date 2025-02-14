@@ -16,19 +16,21 @@ class ModuleHandler {
 
     setupEventListeners() {
         // Add button click handler
-        this.addButton.addEventListener('click', () => {
+        this.addButton.addEventListener('click', (e) => {
+            e.stopPropagation();
             this.modal.classList.toggle('active');
         });
 
         // Module option click handlers
         document.querySelectorAll('.module-option').forEach(option => {
-            option.addEventListener('click', () => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.createModule(option.dataset.type);
                 this.modal.classList.remove('active');
             });
         });
 
-        // Close modal when clicking outside
+        // Only close modal when clicking outside both modal and add button
         document.addEventListener('click', (e) => {
             if (!this.modal.contains(e.target) && !this.addButton.contains(e.target)) {
                 this.modal.classList.remove('active');
@@ -62,24 +64,28 @@ class ModuleHandler {
             </div>
         `;
 
-        this.setupModuleDragging(module);
         this.container.appendChild(module);
 
-        // Setup close button - only handle close button clicks
+        // Only handle close button clicks
         const closeButton = module.querySelector('.module-close');
         closeButton.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent event from bubbling up
+            e.stopPropagation();
             module.remove();
         });
+
+        this.setupModuleDragging(module);
     }
 
     setupModuleDragging(module) {
+        let isDragging = false;
+
         const handleMouseDown = (e) => {
-            // Only start dragging if it's not the close button
+            // Ignore if clicking the close button
             if (e.target.classList.contains('module-close')) {
                 return;
             }
 
+            isDragging = true;
             this.draggedModule = module;
             module.classList.add('dragging');
 
@@ -87,39 +93,41 @@ class ModuleHandler {
             this.initialX = e.clientX - rect.left;
             this.initialY = e.clientY - rect.top;
 
-            document.addEventListener('mousemove', this.handleDrag);
-            document.addEventListener('mouseup', this.handleDragEnd);
+            // Add event listeners
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
         };
 
-        // Add mousedown event listener to the module header only
-        const moduleHeader = module.querySelector('.module-header');
-        moduleHeader.addEventListener('mousedown', handleMouseDown);
-    }
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
 
-    handleDrag = (e) => {
-        if (!this.draggedModule) return;
+            e.preventDefault();
+            
+            this.currentX = e.clientX - this.initialX;
+            this.currentY = e.clientY - this.initialY;
 
-        e.preventDefault();
-        
-        this.currentX = e.clientX - this.initialX;
-        this.currentY = e.clientY - this.initialY;
+            // Keep module within viewport
+            this.currentX = Math.max(0, Math.min(this.currentX, window.innerWidth - module.offsetWidth));
+            this.currentY = Math.max(0, Math.min(this.currentY, window.innerHeight - module.offsetHeight));
 
-        // Keep module within viewport
-        this.currentX = Math.max(0, Math.min(this.currentX, window.innerWidth - this.draggedModule.offsetWidth));
-        this.currentY = Math.max(0, Math.min(this.currentY, window.innerHeight - this.draggedModule.offsetHeight));
+            module.style.left = `${this.currentX}px`;
+            module.style.top = `${this.currentY}px`;
+        };
 
-        this.draggedModule.style.left = `${this.currentX}px`;
-        this.draggedModule.style.top = `${this.currentY}px`;
-    }
+        const handleMouseUp = () => {
+            isDragging = false;
+            if (this.draggedModule) {
+                this.draggedModule.classList.remove('dragging');
+                this.draggedModule = null;
+            }
 
-    handleDragEnd = () => {
-        if (!this.draggedModule) return;
+            // Remove event listeners
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
 
-        this.draggedModule.classList.remove('dragging');
-        this.draggedModule = null;
-
-        document.removeEventListener('mousemove', this.handleDrag);
-        document.removeEventListener('mouseup', this.handleDragEnd);
+        // Add mousedown event listener to the entire module
+        module.addEventListener('mousedown', handleMouseDown);
     }
 }
 

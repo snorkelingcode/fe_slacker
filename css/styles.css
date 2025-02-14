@@ -1034,8 +1034,9 @@ video.post-media {
     margin-bottom: 15px;
     position: absolute;
     width: 300px;
-    pointer-events: auto;
     cursor: move;
+    z-index: 1000;
+    user-select: none;
 }
 
 .module-header {
@@ -1043,24 +1044,8 @@ video.post-media {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
-    cursor: move; /* Shows it's draggable */
+    cursor: move;
     padding: 5px;
-    user-select: none; /* Prevents text selection while dragging */
-}
-
-.module-title {
-    font-weight: bold;
-}
-
-.module-close {
-    cursor: pointer; /* Shows it's clickable */
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-}
-
-.module-close:hover {
-    color: #dc3545;
 }
 
 .module-content {
@@ -1074,8 +1059,22 @@ video.post-media {
     cursor: default;
 }
 
-/* Module dragging states */
 .module.dragging {
     opacity: 0.8;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.module-close {
+    background: none;
+    border: none;
+    color: #65676b;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+.module-close:hover {
+    background-color: #f0f2f5;
+    color: #dc3545;
 }
