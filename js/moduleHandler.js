@@ -68,11 +68,11 @@ class ModuleHandler {
                         <div class="theme-switcher">
                             <label class="theme-option">
                                 <input type="radio" name="theme" value="light" ${this.currentTheme === 'light' ? 'checked' : ''}>
-                                Light Mode
+                                <span>☀️ Light Mode</span>
                             </label>
                             <label class="theme-option">
                                 <input type="radio" name="theme" value="dark" ${this.currentTheme === 'dark' ? 'checked' : ''}>
-                                Dark Mode
+                                <span>🌙 Dark Mode</span>
                             </label>
                         </div>
                     </div>
