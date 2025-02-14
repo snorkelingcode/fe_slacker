@@ -1054,7 +1054,8 @@ video.post-media {
 }
 
 .module-content {
-    min-height: 100px;
+    min-height: 200px;
+    min-width: 1200px;
     border: 1px dashed #e4e6eb;
     border-radius: 6px;
     display: flex;
