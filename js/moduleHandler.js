@@ -65,16 +65,21 @@ class ModuleHandler {
         this.setupModuleDragging(module);
         this.container.appendChild(module);
 
-        // Setup close button
-        module.querySelector('.module-close').addEventListener('click', () => {
+        // Setup close button - only handle close button clicks
+        const closeButton = module.querySelector('.module-close');
+        closeButton.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event from bubbling up
             module.remove();
         });
     }
 
     setupModuleDragging(module) {
-        module.addEventListener('mousedown', (e) => {
-            if (e.target.classList.contains('module-close')) return;
-            
+        const handleMouseDown = (e) => {
+            // Only start dragging if it's not the close button
+            if (e.target.classList.contains('module-close')) {
+                return;
+            }
+
             this.draggedModule = module;
             module.classList.add('dragging');
 
@@ -84,7 +89,11 @@ class ModuleHandler {
 
             document.addEventListener('mousemove', this.handleDrag);
             document.addEventListener('mouseup', this.handleDragEnd);
-        });
+        };
+
+        // Add mousedown event listener to the module header only
+        const moduleHeader = module.querySelector('.module-header');
+        moduleHeader.addEventListener('mousedown', handleMouseDown);
     }
 
     handleDrag = (e) => {

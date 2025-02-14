@@ -1043,6 +1043,9 @@ video.post-media {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
+    cursor: move; /* Shows it's draggable */
+    padding: 5px;
+    user-select: none; /* Prevents text selection while dragging */
 }
 
 .module-title {
@@ -1050,12 +1053,10 @@ video.post-media {
 }
 
 .module-close {
-    background: none;
-    border: none;
-    color: #65676b;
-    cursor: pointer;
-    font-size: 18px;
-    padding: 5px;
+    cursor: pointer; /* Shows it's clickable */
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
 }
 
 .module-close:hover {
@@ -1070,6 +1071,7 @@ video.post-media {
     align-items: center;
     justify-content: center;
     color: #65676b;
+    cursor: default;
 }
 
 /* Module dragging states */
