@@ -1,11 +1,11 @@
 class ModuleHandler {
     constructor() {
-        this.modules = [];
         this.draggedModule = null;
-        this.initialX = 0;
-        this.initialY = 0;
+        this.isDragging = false;
         this.currentX = 0;
         this.currentY = 0;
+        this.xOffset = 0;
+        this.yOffset = 0;
 
         this.addButton = document.getElementById('addModuleButton');
         this.modal = document.getElementById('moduleModal');
@@ -30,7 +30,7 @@ class ModuleHandler {
             });
         });
 
-        // Only close modal when clicking outside both modal and add button
+        // Close modal when clicking outside
         document.addEventListener('click', (e) => {
             if (!this.modal.contains(e.target) && !this.addButton.contains(e.target)) {
                 this.modal.classList.remove('active');
@@ -41,8 +41,11 @@ class ModuleHandler {
     createModule(type) {
         const module = document.createElement('div');
         module.className = 'module';
-        module.style.top = '0px';
-        module.style.left = '0px';
+        
+        // Set initial position
+        const initialX = Math.random() * (window.innerWidth - 320); // 320 is module width
+        const initialY = Math.random() * (window.innerHeight - 200); // 200 is approx module height
+        module.style.transform = `translate(${initialX}px, ${initialY}px)`;
 
         const titles = {
             music: 'Music Player',
@@ -66,7 +69,7 @@ class ModuleHandler {
 
         this.container.appendChild(module);
 
-        // Only handle close button clicks
+        // Setup close button
         const closeButton = module.querySelector('.module-close');
         closeButton.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -77,25 +80,25 @@ class ModuleHandler {
     }
 
     setupModuleDragging(module) {
+        let currentX = 0;
+        let currentY = 0;
+        let initialX = 0;
+        let initialY = 0;
+        let xOffset = 0;
+        let yOffset = 0;
         let isDragging = false;
 
         const handleMouseDown = (e) => {
-            // Ignore if clicking the close button
-            if (e.target.classList.contains('module-close')) {
-                return;
-            }
-
-            isDragging = true;
-            this.draggedModule = module;
-            module.classList.add('dragging');
+            if (e.target.classList.contains('module-close')) return;
 
             const rect = module.getBoundingClientRect();
-            this.initialX = e.clientX - rect.left;
-            this.initialY = e.clientY - rect.top;
+            initialX = e.clientX - rect.left;
+            initialY = e.clientY - rect.top;
 
-            // Add event listeners
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
+            if (e.target === module || module.contains(e.target)) {
+                isDragging = true;
+                module.classList.add('dragging');
+            }
         };
 
         const handleMouseMove = (e) => {
@@ -103,31 +106,27 @@ class ModuleHandler {
 
             e.preventDefault();
             
-            this.currentX = e.clientX - this.initialX;
-            this.currentY = e.clientY - this.initialY;
+            currentX = e.clientX - initialX;
+            currentY = e.clientY - initialY;
 
-            // Keep module within viewport
-            this.currentX = Math.max(0, Math.min(this.currentX, window.innerWidth - module.offsetWidth));
-            this.currentY = Math.max(0, Math.min(this.currentY, window.innerHeight - module.offsetHeight));
+            // Keep module within viewport bounds
+            currentX = Math.max(0, Math.min(currentX, window.innerWidth - module.offsetWidth));
+            currentY = Math.max(0, Math.min(currentY, window.innerHeight - module.offsetHeight));
 
-            module.style.left = `${this.currentX}px`;
-            module.style.top = `${this.currentY}px`;
+            module.style.transform = `translate(${currentX}px, ${currentY}px)`;
         };
 
         const handleMouseUp = () => {
+            initialX = currentX;
+            initialY = currentY;
             isDragging = false;
-            if (this.draggedModule) {
-                this.draggedModule.classList.remove('dragging');
-                this.draggedModule = null;
-            }
-
-            // Remove event listeners
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            module.classList.remove('dragging');
         };
 
-        // Add mousedown event listener to the entire module
+        // Add event listeners to the module
         module.addEventListener('mousedown', handleMouseDown);
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
     }
 }
 
