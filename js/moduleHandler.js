@@ -11,7 +11,7 @@ class ModuleHandler {
         this.modal = document.getElementById('moduleModal');
         this.container = document.getElementById('moduleContainer');
 
-        // Initialize theme
+        // Initialize theme based on user profile or localStorage
         this.currentTheme = localStorage.getItem('theme') || 'light';
         this.applyTheme(this.currentTheme);
 
@@ -46,9 +46,9 @@ class ModuleHandler {
         const module = document.createElement('div');
         module.className = 'module';
         
-        // Set initial position
+        // Set initial position with some randomness to prevent stacking
         const initialX = Math.random() * (window.innerWidth - 420); // Account for module width
-        const initialY = Math.random() * (window.innerHeight - 200); // Account for approximate module height
+        const initialY = Math.random() * (window.innerHeight - 200); // Account for module height
         module.style.transform = `translate(${initialX}px, ${initialY}px)`;
 
         const titles = {
@@ -61,17 +61,18 @@ class ModuleHandler {
         // Special content for settings module
         let content = '';
         if (type === 'settings') {
+            const currentTheme = window.themeHandler.getCurrentTheme();
             content = `
                 <div class="settings-content">
                     <div class="settings-section">
                         <h3 class="settings-title">Theme</h3>
                         <div class="theme-switcher">
                             <label class="theme-option">
-                                <input type="radio" name="theme" value="light" ${this.currentTheme === 'light' ? 'checked' : ''}>
+                                <input type="radio" name="theme" value="light" ${currentTheme === 'light' ? 'checked' : ''}>
                                 <span>☀️ Light Mode</span>
                             </label>
                             <label class="theme-option">
-                                <input type="radio" name="theme" value="dark" ${this.currentTheme === 'dark' ? 'checked' : ''}>
+                                <input type="radio" name="theme" value="dark" ${currentTheme === 'dark' ? 'checked' : ''}>
                                 <span>🌙 Dark Mode</span>
                             </label>
                         </div>
@@ -107,15 +108,15 @@ class ModuleHandler {
 
         // Setup theme switcher if it's a settings module
         if (type === 'settings') {
-            const themeInputs = module.querySelectorAll('input[name="theme"]');
-            themeInputs.forEach(input => {
-                input.addEventListener('change', (e) => {
-                    const newTheme = e.target.value;
-                    this.applyTheme(newTheme);
-                    localStorage.setItem('theme', newTheme);
-                    this.currentTheme = newTheme;
+            setTimeout(() => {
+                const themeInputs = document.querySelectorAll('input[name="theme"]');
+                themeInputs.forEach(input => {
+                    input.addEventListener('change', async (e) => {
+                        const newTheme = e.target.value;
+                        await window.themeHandler.setTheme(newTheme);
+                    });
                 });
-            });
+            }, 0);
         }
 
         this.setupModuleDragging(module);
@@ -180,45 +181,3 @@ class ModuleHandler {
 document.addEventListener('DOMContentLoaded', () => {
     new ModuleHandler();
 });
-
-const additionalStyles = `
-.settings-section {
-    padding: 10px;
-}
-
-.settings-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: var(--text-primary);
-}
-
-.theme-switcher {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.theme-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-}
-
-.theme-option:hover {
-    background-color: var(--bg-primary);
-}
-
-.settings-content {
-    width: 100%;
-}
-`;
-
-// Add the additional styles to the document
-const styleSheet = document.createElement('style');
-styleSheet.textContent = additionalStyles;
-document.head.appendChild(styleSheet);
