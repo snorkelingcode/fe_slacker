@@ -43,8 +43,8 @@ class ModuleHandler {
         module.className = 'module';
         
         // Set initial position
-        const initialX = Math.random() * (window.innerWidth - 320); // 320 is module width
-        const initialY = Math.random() * (window.innerHeight - 200); // 200 is approx module height
+        const initialX = Math.random() * (window.innerWidth - 420); // 320 is module width
+        const initialY = Math.random() * (window.innerHeight - 300); // 200 is approx module height
         module.style.transform = `translate(${initialX}px, ${initialY}px)`;
 
         const titles = {
