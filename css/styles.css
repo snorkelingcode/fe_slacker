@@ -451,8 +451,9 @@ video.post-media {
 }
 
 .profile-cover {
-    height: 200px;
-    background-color: #e4e6eb;
+    height: 300px; /* Increased from 200px */
+    width: 100%;
+    background-color: var(--bg-secondary);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -462,6 +463,9 @@ video.post-media {
 .profile-info {
     padding: 0 2rem 2rem;
     position: relative;
+    background-color: var(--bg-secondary);
+    margin-top: -50px; /* Create overlap with banner */
+    border-radius: 8px;
 }
 
 /* Profile Picture */
@@ -469,8 +473,8 @@ video.post-media {
     width: 168px;
     height: 168px;
     border-radius: 50%;
-    background-color: #e4e6eb;
-    border: 4px solid white;
+    background-color: var(--bg-accent);
+    border: 4px solid var(--bg-secondary);
     margin-top: -84px;
     position: relative;
     overflow: hidden;
@@ -480,8 +484,9 @@ video.post-media {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #65676b;
+    color: var(--text-secondary);
     font-size: 4rem;
+    z-index: 1;
 }
 
 /* Profile Details */
