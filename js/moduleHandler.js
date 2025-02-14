@@ -1,3 +1,4 @@
+// moduleHandler.js
 class ModuleHandler {
     constructor() {
         this.draggedModule = null;
@@ -11,7 +12,7 @@ class ModuleHandler {
         this.modal = document.getElementById('moduleModal');
         this.container = document.getElementById('moduleContainer');
 
-        // Initialize theme based on user profile or localStorage
+        // Initialize theme from localStorage
         this.currentTheme = localStorage.getItem('theme') || 'light';
         this.applyTheme(this.currentTheme);
 
@@ -46,9 +47,9 @@ class ModuleHandler {
         const module = document.createElement('div');
         module.className = 'module';
         
-        // Set initial position with some randomness to prevent stacking
-        const initialX = Math.random() * (window.innerWidth - 420); // Account for module width
-        const initialY = Math.random() * (window.innerHeight - 200); // Account for module height
+        // Set initial position with some randomness
+        const initialX = Math.random() * (window.innerWidth - 420);
+        const initialY = Math.random() * (window.innerHeight - 200);
         module.style.transform = `translate(${initialX}px, ${initialY}px)`;
 
         const titles = {
@@ -61,18 +62,17 @@ class ModuleHandler {
         // Special content for settings module
         let content = '';
         if (type === 'settings') {
-            const currentTheme = window.themeHandler.getCurrentTheme();
             content = `
                 <div class="settings-content">
                     <div class="settings-section">
                         <h3 class="settings-title">Theme</h3>
                         <div class="theme-switcher">
                             <label class="theme-option">
-                                <input type="radio" name="theme" value="light" ${currentTheme === 'light' ? 'checked' : ''}>
+                                <input type="radio" name="theme" value="light" ${this.currentTheme === 'light' ? 'checked' : ''}>
                                 <span>☀️ Light Mode</span>
                             </label>
                             <label class="theme-option">
-                                <input type="radio" name="theme" value="dark" ${currentTheme === 'dark' ? 'checked' : ''}>
+                                <input type="radio" name="theme" value="dark" ${this.currentTheme === 'dark' ? 'checked' : ''}>
                                 <span>🌙 Dark Mode</span>
                             </label>
                         </div>
@@ -108,18 +108,46 @@ class ModuleHandler {
 
         // Setup theme switcher if it's a settings module
         if (type === 'settings') {
-            setTimeout(() => {
-                const themeInputs = document.querySelectorAll('input[name="theme"]');
-                themeInputs.forEach(input => {
-                    input.addEventListener('change', async (e) => {
-                        const newTheme = e.target.value;
-                        await window.themeHandler.setTheme(newTheme);
-                    });
+            const themeInputs = module.querySelectorAll('input[name="theme"]');
+            themeInputs.forEach(input => {
+                input.addEventListener('change', async (e) => {
+                    const newTheme = e.target.value;
+                    await this.setTheme(newTheme);
                 });
-            }, 0);
+            });
         }
 
         this.setupModuleDragging(module);
+    }
+
+    async setTheme(theme) {
+        try {
+            this.currentTheme = theme;
+            this.applyTheme(theme);
+            localStorage.setItem('theme', theme);
+
+            // Save theme to user profile if logged in
+            const walletAddress = SessionManager.getWalletAddress();
+            if (walletAddress) {
+                await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        walletAddress,
+                        theme
+                    })
+                });
+            }
+
+            // Show success message
+            ErrorHandler.showSuccess('Theme updated successfully!', this.container);
+        } catch (error) {
+            console.error('Error setting theme:', error);
+            ErrorHandler.showError('Failed to update theme', this.container);
+        }
+    }
+
+    applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
     }
 
     setupModuleDragging(module) {
@@ -166,14 +194,9 @@ class ModuleHandler {
             module.classList.remove('dragging');
         };
 
-        // Add event listeners to the module
         module.addEventListener('mousedown', handleMouseDown);
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
-    }
-
-    applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
     }
 }
 
@@ -181,3 +204,96 @@ class ModuleHandler {
 document.addEventListener('DOMContentLoaded', () => {
     new ModuleHandler();
 });
+
+// Additional styles for the modules
+const additionalStyles = `
+.settings-section {
+    padding: 10px;
+}
+
+.settings-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--text-primary);
+}
+
+.theme-switcher {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.theme-option:hover {
+    background-color: var(--bg-primary);
+}
+
+.settings-content {
+    width: 100%;
+}
+
+.module {
+    position: absolute;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    min-width: 300px;
+    max-width: 500px;
+    overflow: hidden;
+    cursor: move;
+}
+
+.module-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.module-title {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.module-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.module-close:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.module-content {
+    padding: 16px;
+    color: var(--text-primary);
+}
+
+.module.dragging {
+    opacity: 0.8;
+    cursor: grabbing;
+}
+`;
+
+// Add the styles to the document
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
