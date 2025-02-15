@@ -54,7 +54,10 @@ const handleApiResponse = async (response) => {
 
 const makeApiCall = async (endpoint, options = {}) => {
     try {
-        console.log('Making API call to:', endpoint);
+        console.log('Making API call to:', endpoint, 'with options:', {
+            ...options,
+            headers: options.headers
+        });
         
         const finalOptions = {
             ...DEFAULT_FETCH_OPTIONS,
@@ -63,24 +66,25 @@ const makeApiCall = async (endpoint, options = {}) => {
                 ...DEFAULT_FETCH_OPTIONS.headers,
                 ...options.headers,
             },
-            credentials: 'include' // Add this line
+            credentials: 'include'
         };
 
         const response = await fetch(endpoint, finalOptions);
-        
-        // Log full response details for debugging
         console.log('Response status:', response.status);
         console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-        // Handle non-JSON responses
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-            const text = await response.text();
-            console.error('Non-JSON response:', text);
-            throw new Error(`Invalid response format: ${text}`);
-        }
+        // Try to parse response as text first
+        const text = await response.text();
+        console.log('Raw response:', text);
 
-        const data = await response.json();
+        // Then parse as JSON if possible
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error('Failed to parse response as JSON:', text);
+            throw new Error('Invalid JSON response');
+        }
 
         if (!response.ok) {
             throw new Error(data.message || `HTTP error! status: ${response.status}`);
