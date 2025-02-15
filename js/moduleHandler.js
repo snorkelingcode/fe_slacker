@@ -28,18 +28,8 @@ class ModuleHandler {
             this.addButton.removeEventListener('click', this.handleAddButtonClick);
         }
         
-        // Clear any existing modules
-        this.modules.forEach((module, id) => {
-            module.remove();
-            this.modules.delete(id);
-        });
-
-        // Remove modal event listeners
-        if (this.modal) {
-            this.modal.querySelectorAll('.module-option').forEach(option => {
-                option.removeEventListener('click', this.createModuleHandler);
-            });
-        }
+        // Do not clear modules to maintain persistence
+        this.saveModuleState();
     }
 
     initializeModuleSystem() {
@@ -61,6 +51,9 @@ class ModuleHandler {
                 });
                 return;
             }
+
+            // Clear any existing modules in the container
+            this.container.innerHTML = '';
 
             // Setup add button click handler with proper binding
             this.handleAddButtonClick = this.handleAddButtonClick.bind(this);
@@ -98,6 +91,20 @@ class ModuleHandler {
 
     createModuleHandler(e) {
         const moduleType = e.currentTarget.dataset.type;
+        
+        // Check if a module of this type already exists
+        const existingModule = Array.from(this.modules.values()).find(
+            module => module.dataset.type === moduleType
+        );
+
+        if (existingModule) {
+            // If module already exists, just bring it to the front
+            existingModule.style.zIndex = '1001';
+            this.modal.classList.remove('active');
+            return;
+        }
+
+        // If no module exists, create a new one
         this.createModule(moduleType);
         this.modal.classList.remove('active');
     }
@@ -130,20 +137,17 @@ class ModuleHandler {
         try {
             const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
             
-            // Clear existing modules first to prevent duplicates
-            if (this.container) {
-                this.container.innerHTML = '';
-                this.modules.clear();
-            }
+            // Clear existing modules first
+            this.container.innerHTML = '';
+            this.modules.clear();
 
+            // If there are saved modules, recreate them
             savedStates.forEach(state => {
-                // Check if this module doesn't already exist
-                if (!this.modules.has(state.id)) {
-                    this.createModule(state.type, 
-                        { x: state.position.x, y: state.position.y }, 
-                        state.id
-                    );
-                }
+                const module = this.createModule(
+                    state.type, 
+                    { x: state.position.x, y: state.position.y }, 
+                    state.id
+                );
             });
         } catch (error) {
             console.error('Error loading saved modules:', error);
@@ -428,7 +432,7 @@ class ModuleHandler {
     }
 }
 
-// Global initialization
+// Global initialization with persistence
 window.initializeModuleHandler = () => {
     // Ensure only one module handler exists
     if (window.moduleHandlerInstance) {
@@ -466,6 +470,7 @@ const additionalStyles = `
 const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
+
 
 // Initialize module handler as early as possible
 document.addEventListener('DOMContentLoaded', async () => {
