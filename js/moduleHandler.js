@@ -54,6 +54,7 @@ class ModuleHandler {
 
             // Clear any existing modules in the container
             this.container.innerHTML = '';
+            this.modules.clear();
 
             // Setup add button click handler with proper binding
             this.handleAddButtonClick = this.handleAddButtonClick.bind(this);
@@ -137,17 +138,22 @@ class ModuleHandler {
         try {
             const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
             
-            // Clear existing modules first
-            this.container.innerHTML = '';
-            this.modules.clear();
+            // Prevent duplicate modules
+            const existingTypes = new Set();
 
             // If there are saved modules, recreate them
             savedStates.forEach(state => {
-                const module = this.createModule(
-                    state.type, 
-                    { x: state.position.x, y: state.position.y }, 
-                    state.id
-                );
+                // Check if a module of this type has already been created
+                if (!existingTypes.has(state.type)) {
+                    const module = this.createModule(
+                        state.type, 
+                        { x: state.position.x, y: state.position.y }, 
+                        state.id
+                    );
+                    
+                    // Mark this type as created
+                    existingTypes.add(state.type);
+                }
             });
         } catch (error) {
             console.error('Error loading saved modules:', error);
