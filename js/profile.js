@@ -611,6 +611,7 @@ class WalletConnector {
             if (window.ModuleHandler) {
                 const moduleHandler = new ModuleHandler();
                 moduleHandler.loadSavedModules();
+                moduleHandler.setupEventListeners(); // Explicitly reinitialize event listeners
             }
     
             // Re-initialize sign out button after profile loads

@@ -78,6 +78,9 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const moduleHandler = new ModuleHandler();
             await moduleHandler.initializeTheme();
+
+            // Reinitialize module event listeners 
+            moduleHandler.setupEventListeners();
         });
     </script>
 </body>
