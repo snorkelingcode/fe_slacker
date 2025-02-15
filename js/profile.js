@@ -158,28 +158,34 @@ class WalletConnector {
 
     async createOrLoadProfile() {
         try {
-            // First try to load existing profile
-            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
-            console.log('Existing profile loaded:', response);
-            return response;
+            try {
+                // First try to load existing profile
+                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
+                console.log('Existing profile loaded:', response);
+                return response;
+            } catch (error) {
+                console.log('No existing profile, creating new one...');
+                // If profile doesn't exist, create a new one
+                const newProfile = {
+                    walletAddress: this.account.toLowerCase(),
+                    username: `User_${this.account.substring(2, 6)}`,
+                    bio: 'New to Slacker',
+                    theme: localStorage.getItem('theme') || 'light'
+                };
+        
+                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
+                    method: 'POST',
+                    body: JSON.stringify(newProfile)
+                });
+                
+                console.log('New profile created:', response);
+                return response;
+            }
         } catch (error) {
-            // If profile doesn't exist, create a new one
-            console.log('Creating new profile...');
-            const newProfile = {
-                walletAddress: this.account.toLowerCase(),
-                username: `User_${this.account.substring(2, 6)}`,
-                bio: 'New to Slacker'
-            };
-    
-            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                method: 'POST',
-                body: JSON.stringify(newProfile)
-            });
-            
-            console.log('New profile created:', response);
-            return response;
+            console.error('Error in createOrLoadProfile:', error);
+            throw error;
         }
-    }    
+    }  
 
     async connectAsGuest() {
         console.log('=== Connecting as Guest ===');

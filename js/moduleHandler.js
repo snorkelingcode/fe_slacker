@@ -46,15 +46,22 @@ class ModuleHandler {
         try {
             const walletAddress = SessionManager.getWalletAddress();
             if (walletAddress) {
-                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
-                if (response && response.theme) {
-                    this.currentTheme = response.theme;
-                    localStorage.setItem('theme', response.theme);
-                    this.applyTheme(response.theme);
+                try {
+                    const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
+                    if (response && response.theme) {
+                        this.currentTheme = response.theme;
+                        localStorage.setItem('theme', response.theme);
+                        this.applyTheme(response.theme);
+                    }
+                } catch (error) {
+                    // If user doesn't exist, just use default theme
+                    console.log('User profile not found, using default theme');
+                    this.applyTheme(this.currentTheme);
                 }
             }
         } catch (error) {
-            console.error('Error loading user theme:', error);
+            console.log('Using default theme');
+            this.applyTheme(this.currentTheme);
         }
     }
 
