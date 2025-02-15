@@ -74,6 +74,17 @@
     <script src="js/postHandler.js"></script>
     <script src="js/profile.js"></script>
     <script>
+        // Ensure single ModuleHandler initialization
+        document.addEventListener('DOMContentLoaded', () => {
+            // Destroy any existing global module handler
+            if (window.moduleHandlerInstance) {
+                delete window.moduleHandlerInstance;
+            }
+            
+            // Create new module handler
+            window.moduleHandlerInstance = new ModuleHandler();
+        });
+    </script>    <script>
         // Ensure ModuleHandler initialization
         document.addEventListener('DOMContentLoaded', () => {
             if (!window.moduleHandlerInstance) {

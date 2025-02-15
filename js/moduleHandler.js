@@ -1,6 +1,5 @@
 class ModuleHandler {
     constructor() {
-        console.log('ModuleHandler constructor called');
         this.draggedModule = null;
         this.isDragging = false;
         this.modules = new Map(); // Track active modules
@@ -15,7 +14,7 @@ class ModuleHandler {
         document.documentElement.setAttribute('data-theme', this.currentTheme);
 
         // Defer event listener setup
-        this.setupDOMEventListeners();
+        this.setupEventListeners();
     }
 
     setupDOMEventListeners() {
@@ -98,38 +97,52 @@ class ModuleHandler {
     }
 
     setupEventListeners() {
-        console.log('setupEventListeners called');
+        // Use a defer method to ensure DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            this.addButton = document.getElementById('addModuleButton');
+            this.modal = document.getElementById('moduleModal');
+            this.container = document.getElementById('moduleContainer');
 
-        // Recheck elements
-        this.addButton = document.getElementById('addModuleButton');
-        this.modal = document.getElementById('moduleModal');
+            // Ensure clean slate
+            if (this.container) {
+                this.container.innerHTML = '';
+                this.modules.clear();
+            }
 
-        if (this.addButton) {
-            console.log('Setting up add button listeners');
-            // Remove existing listeners
-            const oldAddButton = this.addButton;
-            const newAddButton = oldAddButton.cloneNode(true);
-            oldAddButton.parentNode.replaceChild(newAddButton, oldAddButton);
-            this.addButton = newAddButton;
+            // Only setup if all elements exist
+            if (this.addButton && this.modal && this.container) {
+                // Clear existing listeners
+                const oldAddButton = this.addButton;
+                const newAddButton = oldAddButton.cloneNode(true);
+                oldAddButton.parentNode.replaceChild(newAddButton, oldAddButton);
+                this.addButton = newAddButton;
 
-            // Multiple listener approaches
-            this.addButton.addEventListener('click', this.handleAddButtonClick.bind(this));
-            this.addButton.onclick = this.handleAddButtonClick.bind(this);
-        } else {
-            console.error('Add button not found during setupEventListeners');
-        }
+                // Add click listener to toggle modal
+                this.addButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.modal.classList.toggle('active');
+                });
 
-        // Module option listeners
-        document.querySelectorAll('.module-option').forEach(option => {
-            console.log('Setting up module option listener');
-            option.addEventListener('click', (e) => {
-                e.stopPropagation();
-                console.log('Module option clicked:', option.dataset.type);
-                this.createModule(option.dataset.type);
-                if (this.modal) {
-                    this.modal.classList.remove('active');
-                }
-            });
+                // Module option listeners
+                this.modal.querySelectorAll('.module-option').forEach(option => {
+                    option.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.createModule(option.dataset.type);
+                        this.modal.classList.remove('active');
+                    });
+                });
+
+                // Close modal when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (this.modal && !this.modal.contains(e.target) && 
+                        this.addButton && !this.addButton.contains(e.target)) {
+                        this.modal.classList.remove('active');
+                    }
+                });
+
+                // Load saved modules
+                this.loadSavedModules();
+            }
         });
     }
 
@@ -153,8 +166,10 @@ class ModuleHandler {
             const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
             
             // Clear existing modules first to prevent duplicates
-            this.container.innerHTML = '';
-            this.modules.clear();
+            if (this.container) {
+                this.container.innerHTML = '';
+                this.modules.clear();
+            }
 
             savedStates.forEach(state => {
                 // Check if this module doesn't already exist

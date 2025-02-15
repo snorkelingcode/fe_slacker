@@ -608,10 +608,11 @@ class WalletConnector {
             }
     
             // Re-initialize module handler
-            if (window.moduleHandlerInstance) {
-                // Ensure event listeners are set up
-                window.moduleHandlerInstance.setupDOMEventListeners();
-            } else if (window.ModuleHandler) {
+            if (window.ModuleHandler) {
+                // Destroy existing handler and create new one
+                if (window.moduleHandlerInstance) {
+                    delete window.moduleHandlerInstance;
+                }
                 window.moduleHandlerInstance = new ModuleHandler();
             }
     
