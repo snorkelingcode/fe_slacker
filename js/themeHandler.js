@@ -1,26 +1,39 @@
 class ThemeHandler {
     constructor() {
-        // Initialize with system default or saved theme
-        this.currentTheme = localStorage.getItem('theme') || 'light';
+        // Apply theme immediately on class instantiation
+        this.applyInitialTheme();
         this.init();
     }
 
+    applyInitialTheme() {
+        // Get theme from localStorage and apply it immediately
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        this.currentTheme = savedTheme;
+    }
+
     init() {
-        // Apply theme on initialization
-        this.applyTheme(this.currentTheme);
-        
         // If user is logged in, fetch their saved theme
         if (SessionManager.isConnected()) {
             this.fetchUserTheme();
         }
+
+        // Listen for theme changes across tabs/windows
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'theme') {
+                this.applyTheme(e.newValue || 'light');
+            }
+        });
     }
 
     async fetchUserTheme() {
         try {
             const walletAddress = SessionManager.getWalletAddress();
+            if (!walletAddress) return;
+
             const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress.toLowerCase()}`);
             
-            if (response.theme) {
+            if (response.theme && response.theme !== this.currentTheme) {
                 this.setTheme(response.theme);
             }
         } catch (error) {
@@ -37,11 +50,17 @@ class ThemeHandler {
         if (SessionManager.isConnected()) {
             try {
                 const walletAddress = SessionManager.getWalletAddress();
+                const userResponse = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
+                
                 await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                     method: 'POST',
                     body: JSON.stringify({
                         walletAddress: walletAddress.toLowerCase(),
-                        theme: theme
+                        username: userResponse.username,
+                        bio: userResponse.bio || 'New to Slacker',
+                        theme: theme,
+                        profilePicture: userResponse.profilePicture,
+                        bannerPicture: userResponse.bannerPicture
                     })
                 });
             } catch (error) {
@@ -59,5 +78,6 @@ class ThemeHandler {
     }
 }
 
-// Initialize theme handler globally
-window.themeHandler = new ThemeHandler();
+// Initialize theme handler as early as possible
+const themeHandler = new ThemeHandler();
+window.themeHandler = themeHandler;
