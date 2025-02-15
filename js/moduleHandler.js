@@ -173,7 +173,7 @@ class ModuleHandler {
                                 sendButton.disabled = true;
                         
                                 // Send message to backend
-                                const response = await makeApiCall(API_ENDPOINTS.users + '/chat', {
+                                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
                                     method: 'POST',
                                     body: JSON.stringify({ 
                                         walletAddress: SessionManager.getWalletAddress(),
