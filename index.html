@@ -51,30 +51,9 @@
     <script src="js/postHandler.js"></script>
     <script src="js/feed.js"></script>
     <script>
-        // Ensure single ModuleHandler initialization
         document.addEventListener('DOMContentLoaded', () => {
-            // Destroy any existing global module handler
-            if (window.moduleHandlerInstance) {
-                delete window.moduleHandlerInstance;
-            }
-            
-            // Create new module handler
-            window.moduleHandlerInstance = new ModuleHandler();
-        });
-    </script>    <script>
-        // Ensure ModuleHandler initialization
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!window.moduleHandlerInstance) {
-                window.moduleHandlerInstance = new ModuleHandler();
-            }
-        });
-    </script>    <script>
-        // Ensure single ModuleHandler initialization
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Check if ModuleHandler is already initialized
-            if (!window.moduleHandlerInstance) {
-                window.moduleHandlerInstance = new ModuleHandler();
-                await window.moduleHandlerInstance.initializeTheme();
+            if (window.initializeModuleHandler) {
+                window.initializeModuleHandler();
             }
         });
     </script>
