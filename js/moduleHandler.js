@@ -3,7 +3,9 @@ class ModuleHandler {
         this.draggedModule = null;
         this.isDragging = false;
         this.modules = new Map();
+        this.currentPath = window.location.pathname;
         
+        // Check if we should initialize
         if (!SessionManager.isConnected()) {
             console.log('No active session, skipping module initialization');
             return;
@@ -12,15 +14,60 @@ class ModuleHandler {
         this.addButton = document.getElementById('addModuleButton');
         this.modal = document.getElementById('moduleModal');
         this.container = document.getElementById('moduleContainer');
-        this.currentPath = window.location.pathname;
 
         if (!this.container) {
             console.log('Module container not found, skipping initialization');
             return;
         }
 
+        // Initial setup
+        this.initializeUIElements();
         this.setupEventListeners();
         this.loadSavedModules();
+    }
+
+    initializeUIElements() {
+        // Apply current theme
+        this.currentTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', this.currentTheme);
+    }
+
+    setupEventListeners() {
+        if (!this.addButton || !this.modal) {
+            console.error('Required UI elements not found');
+            return;
+        }
+
+        // Add Module Button Click
+        this.addButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleModal();
+        });
+
+        // Module Options Click
+        document.querySelectorAll('.module-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.createModule(option.dataset.type);
+                this.toggleModal();
+            });
+        });
+
+        // Close Modal on Outside Click
+        document.addEventListener('click', (e) => {
+            if (!this.modal.contains(e.target) && !this.addButton.contains(e.target)) {
+                this.modal.classList.remove('active');
+            }
+        });
+
+        // Save States Before Page Unload
+        window.addEventListener('beforeunload', () => {
+            this.saveModuleState();
+        });
+    }
+
+    toggleModal() {
+        this.modal.classList.toggle('active');
     }
 
     saveModuleState() {
@@ -42,10 +89,8 @@ class ModuleHandler {
         const walletAddress = SessionManager.getWalletAddress();
         if (!walletAddress) return;
 
-        // Save to localStorage for immediate access
+        // Save to localStorage
         localStorage.setItem(`moduleStates_${walletAddress}`, JSON.stringify(moduleStates));
-
-        // Save to backend for persistence
         this.saveModulesToBackend(moduleStates);
     }
 
@@ -69,7 +114,7 @@ class ModuleHandler {
             const walletAddress = SessionManager.getWalletAddress();
             if (!walletAddress) return;
 
-            // First try to load from localStorage for immediate display
+            // First try loading from localStorage
             const localStates = localStorage.getItem(`moduleStates_${walletAddress}`);
             if (localStates) {
                 JSON.parse(localStates).forEach(state => {
@@ -79,22 +124,23 @@ class ModuleHandler {
                 });
             }
 
-            // Then fetch from backend for any updates
-            const response = await makeApiCall(`${API_ENDPOINTS.users}/modules/${walletAddress}`);
-            if (response && response.modules) {
-                // Clear existing modules
-                this.modules.forEach(module => module.remove());
-                this.modules.clear();
+            // Then try backend
+            try {
+                const response = await makeApiCall(`${API_ENDPOINTS.users}/modules/${walletAddress}`);
+                if (response && response.modules) {
+                    this.modules.forEach(module => module.remove());
+                    this.modules.clear();
 
-                // Create modules from backend data
-                response.modules.forEach(state => {
-                    if (state.page === this.currentPath || state.isDocked) {
-                        this.createModule(state.type, state.position, state.id, state.isDocked, state.settings);
-                    }
-                });
+                    response.modules.forEach(state => {
+                        if (state.page === this.currentPath || state.isDocked) {
+                            this.createModule(state.type, state.position, state.id, state.isDocked, state.settings);
+                        }
+                    });
 
-                // Update localStorage with latest data
-                localStorage.setItem(`moduleStates_${walletAddress}`, JSON.stringify(response.modules));
+                    localStorage.setItem(`moduleStates_${walletAddress}`, JSON.stringify(response.modules));
+                }
+            } catch (error) {
+                console.error('Error fetching modules from backend:', error);
             }
         } catch (error) {
             console.error('Error loading saved modules:', error);
@@ -110,7 +156,7 @@ class ModuleHandler {
         module.dataset.settings = settings;
         module.id = moduleId;
 
-        // Set position
+        // Position module
         if (position) {
             module.style.transform = `translate(${position.x}px, ${position.y}px)`;
         } else {
@@ -119,22 +165,10 @@ class ModuleHandler {
             module.style.transform = `translate(${initialX}px, ${initialY}px)`;
         }
 
-        const dockButton = document.createElement('button');
-        dockButton.className = 'module-dock-btn';
-        dockButton.innerHTML = isDocked ? '📌' : '📍';
-        dockButton.title = isDocked ? 'Undock Module' : 'Dock Module';
-        dockButton.onclick = (e) => {
-            e.stopPropagation();
-            const newDocked = !isDocked;
-            module.dataset.isDocked = newDocked.toString();
-            dockButton.innerHTML = newDocked ? '📌' : '📍';
-            dockButton.title = newDocked ? 'Undock Module' : 'Dock Module';
-            this.saveModuleState();
-        };
-
         let content = '';
         let moduleTitle = '';
 
+        // Module content setup
         switch (type) {
             case 'settings':
                 moduleTitle = 'Settings';
@@ -160,81 +194,18 @@ class ModuleHandler {
                 moduleTitle = 'Music Player';
                 content = 'SoundCloud Widget Coming Soon';
                 break;
-                case 'ai':
-                    moduleTitle = 'AI Chat';
-                    content = `
-                        <div class="ai-chat-container">
-                            <div class="ai-messages"></div>
-                            <div class="ai-input-area">
-                                <input type="text" class="ai-message-input" placeholder="Ask me anything...">
-                                <button class="ai-send-btn">Send</button>
-                            </div>
+            case 'ai':
+                moduleTitle = 'AI Chat';
+                content = `
+                    <div class="ai-chat-container">
+                        <div class="ai-messages"></div>
+                        <div class="ai-input-area">
+                            <input type="text" class="ai-message-input" placeholder="Ask me anything...">
+                            <button class="ai-send-btn">Send</button>
                         </div>
-                    `;
-                    
-                    // Slight delay to ensure DOM is ready
-                    setTimeout(() => {
-                        const messagesContainer = module.querySelector('.ai-messages');
-                        const messageInput = module.querySelector('.ai-message-input');
-                        const sendButton = module.querySelector('.ai-send-btn');
-                
-                        const addMessage = (message, sender) => {
-                            const messageEl = document.createElement('div');
-                            messageEl.classList.add('ai-message', sender);
-                            messageEl.textContent = message;
-                            messagesContainer.appendChild(messageEl);
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        };
-                
-                        const sendMessage = async () => {
-                            const message = messageInput.value.trim();
-                            if (!message) return;
-                        
-                            // Show user message
-                            addMessage(message, 'user-message');
-                            messageInput.value = '';
-                        
-                            try {
-                                // Prevent dragging during API call
-                                module.classList.remove('dragging');
-                        
-                                // Disable input during request
-                                messageInput.disabled = true;
-                                sendButton.disabled = true;
-                        
-                                // Send message to backend
-                                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
-                                    method: 'POST',
-                                    body: JSON.stringify({ 
-                                        walletAddress: SessionManager.getWalletAddress(),
-                                        message 
-                                    })
-                                });
-                        
-                                // Show AI response
-                                addMessage(response.message, 'ai-message');
-                            } catch (error) {
-                                addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
-                                console.error('AI Chat Error:', error);
-                            } finally {
-                                messageInput.disabled = false;
-                                sendButton.disabled = false;
-                                messageInput.focus();
-                            }
-                        };
-                
-                        // Send on button click
-                        sendButton.addEventListener('click', sendMessage);
-                
-                        // Send on Enter key
-                        messageInput.addEventListener('keypress', (e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                sendMessage();
-                            }
-                        });
-                    }, 100);
-                    break;
+                    </div>
+                `;
+                break;
             case 'market':
                 moduleTitle = 'Crypto Market';
                 content = 'Crypto Prices Coming Soon';
@@ -244,8 +215,12 @@ class ModuleHandler {
                 content = 'Content Coming Soon';
         }
 
+        // Create module HTML
         module.innerHTML = `
             <div class="module-header">
+                <button class="module-dock-btn" title="${isDocked ? 'Undock Module' : 'Dock Module'}">
+                    ${isDocked ? '📌' : '📍'}
+                </button>
                 <div class="module-title">${moduleTitle}</div>
                 <button class="module-close">×</button>
             </div>
@@ -254,11 +229,19 @@ class ModuleHandler {
             </div>
         `;
 
-        this.container.appendChild(module);
-        this.modules.set(moduleId, module);
-
-        // Setup close button
+        // Add event listeners
+        const dockButton = module.querySelector('.module-dock-btn');
         const closeButton = module.querySelector('.module-close');
+
+        dockButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const newDocked = !isDocked;
+            module.dataset.isDocked = newDocked.toString();
+            dockButton.innerHTML = newDocked ? '📌' : '📍';
+            dockButton.title = newDocked ? 'Undock Module' : 'Dock Module';
+            this.saveModuleState();
+        });
+
         closeButton.addEventListener('click', (e) => {
             e.stopPropagation();
             this.modules.delete(moduleId);
@@ -266,66 +249,19 @@ class ModuleHandler {
             this.saveModuleState();
         });
 
-        // Setup theme switcher if it's a settings module
-        if (type === 'settings') {
-            const themeInputs = module.querySelectorAll('input[name="theme"]');
-            themeInputs.forEach(input => {
-                input.addEventListener('change', async (e) => {
-                    await this.setTheme(e.target.value);
-                });
-            });
-        }
-
-        const header = module.querySelector('.module-header');
-        header.insertBefore(dockButton, header.firstChild);
-
         this.container.appendChild(module);
         this.modules.set(moduleId, module);
         this.setupModuleDragging(module);
         this.saveModuleState();
-        
-        return module;
-    }
 
-    async setTheme(theme) {
-        try {
-            this.currentTheme = theme;
-            localStorage.setItem('theme', theme);
-            this.applyTheme(theme);
-
-            const walletAddress = SessionManager.getWalletAddress();
-            if (walletAddress) {
-                try {
-                    const userResponse = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
-                    await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            walletAddress,
-                            username: userResponse.username,
-                            bio: userResponse.bio || 'New to Slacker',
-                            theme: theme,
-                            profilePicture: userResponse.profilePicture,
-                            bannerPicture: userResponse.bannerPicture
-                        })
-                    });
-                    ErrorHandler.showSuccess('Theme updated successfully!', this.container);
-                } catch (error) {
-                    console.error('Error updating theme on server:', error);
-                    // Still keep the theme locally even if server update fails
-                }
-            }
-        } catch (error) {
-            console.error('Error setting theme:', error);
-            ErrorHandler.showError('Failed to update theme', this.container);
-
-            // Revert theme in localStorage if update fails
-            const previousTheme = localStorage.getItem('theme') || 'light';
-            this.applyTheme(previousTheme);
+        // Setup additional functionality based on module type
+        if (type === 'settings') {
+            this.setupThemeSwitcher(module);
+        } else if (type === 'ai') {
+            this.setupAIChat(module);
         }
-    }
 
-    applyTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
+        return module;
     }
 
     setupModuleDragging(module) {
@@ -336,7 +272,8 @@ class ModuleHandler {
         let isDragging = false;
 
         const handleMouseDown = (e) => {
-            if (e.target.classList.contains('module-close')) return;
+            if (e.target.classList.contains('module-close') || 
+                e.target.classList.contains('module-dock-btn')) return;
 
             const rect = module.getBoundingClientRect();
             initialX = e.clientX - rect.left;
@@ -375,59 +312,74 @@ class ModuleHandler {
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
     }
-}
 
-// Additional styles
-const additionalStyles = `
-.settings-section {
-    padding: 10px;
-}
+    setupThemeSwitcher(module) {
+        const themeInputs = module.querySelectorAll('input[name="theme"]');
+        themeInputs.forEach(input => {
+            input.addEventListener('change', async (e) => {
+                await window.themeHandler.setTheme(e.target.value);
+            });
+        });
+    }
 
-.settings-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: var(--text-primary);
-}
+    setupAIChat(module) {
+        const messagesContainer = module.querySelector('.ai-messages');
+        const messageInput = module.querySelector('.ai-message-input');
+        const sendButton = module.querySelector('.ai-send-btn');
 
-.theme-switcher {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
+        const addMessage = (message, sender) => {
+            const messageEl = document.createElement('div');
+            messageEl.classList.add('ai-message', sender);
+            messageEl.textContent = message;
+            messagesContainer.appendChild(messageEl);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        };
 
-.theme-option {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-}
+        const sendMessage = async () => {
+            const message = messageInput.value.trim();
+            if (!message) return;
 
-.theme-option:hover {
-    background-color: var(--bg-primary);
-}
+            addMessage(message, 'user-message');
+            messageInput.value = '';
 
-.settings-content {
-    width: 100%;
-}
-`;
+            try {
+                module.classList.remove('dragging');
+                messageInput.disabled = true;
+                sendButton.disabled = true;
 
-// Add the styles to the document
-const styleSheet = document.createElement('style');
-styleSheet.textContent = additionalStyles;
-document.head.appendChild(styleSheet);
+                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        walletAddress: SessionManager.getWalletAddress(),
+                        message 
+                    })
+                });
+
+                addMessage(response.message, 'ai-message');
+            } catch (error) {
+                addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
+                console.error('AI Chat Error:', error);
+            } finally {
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        };
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+}
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    const moduleContainer = document.getElementById('moduleContainer');
-    if (moduleContainer && SessionManager.isConnected()) {
+    if (SessionManager.isConnected()) {
         console.log('Initializing ModuleHandler...');
-        new ModuleHandler();
-    } else {
-        console.log('Skipping ModuleHandler initialization');
+        window.moduleHandler = new ModuleHandler();
     }
 });
-
