@@ -1,5 +1,10 @@
 class ModuleHandler {
     constructor() {
+        // Reset any existing module handler
+        if (window.moduleHandlerInstance) {
+            window.moduleHandlerInstance.destroy();
+        }
+
         this.draggedModule = null;
         this.isDragging = false;
         this.modules = new Map(); // Track active modules
@@ -13,137 +18,97 @@ class ModuleHandler {
         this.currentTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', this.currentTheme);
 
-        // Defer event listener setup
-        this.setupEventListeners();
+        // Use a single, robust method to set up event listeners
+        this.initializeModuleSystem();
     }
 
-    setupDOMEventListeners() {
-        console.log('setupDOMEventListeners called');
-        // Immediate check
-        this.addButton = document.getElementById('addModuleButton');
-        this.modal = document.getElementById('moduleModal');
-        this.container = document.getElementById('moduleContainer');
-
-        console.log('Initial elements:', {
-            addButton: this.addButton,
-            modal: this.modal,
-            container: this.container
-        });
-
-        // Use multiple event listeners to ensure capture
+    destroy() {
+        // Remove existing event listeners
         if (this.addButton) {
-            // Multiple ways to attach listeners
-            this.addButton.addEventListener('click', this.handleAddButtonClick.bind(this));
-            this.addButton.onclick = this.handleAddButtonClick.bind(this);
+            this.addButton.removeEventListener('click', this.handleAddButtonClick);
         }
+        
+        // Clear any existing modules
+        this.modules.forEach((module, id) => {
+            module.remove();
+            this.modules.delete(id);
+        });
 
-        // Fallback to DOMContentLoaded
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOMContentLoaded event fired');
+        // Remove modal event listeners
+        if (this.modal) {
+            this.modal.querySelectorAll('.module-option').forEach(option => {
+                option.removeEventListener('click', this.createModuleHandler);
+            });
+        }
+    }
+
+    initializeModuleSystem() {
+        // Defer DOM-dependent initialization
+        const initializeDOM = () => {
+            console.log('Initializing Module System');
             
-            // Recheck elements
+            // Find essential elements
             this.addButton = document.getElementById('addModuleButton');
             this.modal = document.getElementById('moduleModal');
             this.container = document.getElementById('moduleContainer');
 
-            console.log('DOMContentLoaded elements:', {
-                addButton: this.addButton,
-                modal: this.modal,
-                container: this.container
+            // Validate all required elements exist
+            if (!this.addButton || !this.modal || !this.container) {
+                console.warn('Module system elements not fully present', {
+                    addButton: !!this.addButton,
+                    modal: !!this.modal,
+                    container: !!this.container
+                });
+                return;
+            }
+
+            // Setup add button click handler with proper binding
+            this.handleAddButtonClick = this.handleAddButtonClick.bind(this);
+            this.addButton.addEventListener('click', this.handleAddButtonClick);
+
+            // Setup module option click handlers
+            this.createModuleHandler = this.createModuleHandler.bind(this);
+            this.modal.querySelectorAll('.module-option').forEach(option => {
+                option.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.createModuleHandler(e);
+                });
             });
 
-            // Setup event listeners again
-            this.setupEventListeners();
-        });
-
-        // Fallback to window load
-        window.addEventListener('load', () => {
-            console.log('Window load event fired');
-            
-            // Recheck elements
-            this.addButton = document.getElementById('addModuleButton');
-            this.modal = document.getElementById('moduleModal');
-            this.container = document.getElementById('moduleContainer');
-
-            console.log('Window load elements:', {
-                addButton: this.addButton,
-                modal: this.modal,
-                container: this.container
+            // Close modal when clicking outside
+            document.addEventListener('click', (e) => {
+                if (this.modal && 
+                    !this.modal.contains(e.target) && 
+                    !this.addButton.contains(e.target)) {
+                    this.modal.classList.remove('active');
+                }
             });
 
-            // Setup event listeners again
-            this.setupEventListeners();
-        });
+            // Load saved modules
+            this.loadSavedModules();
+        };
+
+        // Use multiple event listeners to ensure initialization
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeDOM);
+        } else {
+            initializeDOM();
+        }
+    }
+
+    createModuleHandler(e) {
+        const moduleType = e.currentTarget.dataset.type;
+        this.createModule(moduleType);
+        this.modal.classList.remove('active');
     }
 
     handleAddButtonClick(e) {
-        console.log('Add button clicked!', {
-            event: e,
-            addButton: this.addButton,
-            modal: this.modal
-        });
-
-        if (e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
+        e.preventDefault();
+        e.stopPropagation();
 
         if (this.modal) {
             this.modal.classList.toggle('active');
-            console.log('Modal toggle attempted');
-        } else {
-            console.error('Modal element not found!');
         }
-    }
-
-    setupEventListeners() {
-        // Use a defer method to ensure DOM is ready
-        document.addEventListener('DOMContentLoaded', () => {
-            this.addButton = document.getElementById('addModuleButton');
-            this.modal = document.getElementById('moduleModal');
-            this.container = document.getElementById('moduleContainer');
-
-            // Ensure clean slate
-            if (this.container) {
-                this.container.innerHTML = '';
-                this.modules.clear();
-            }
-
-            // Only setup if all elements exist
-            if (this.addButton && this.modal && this.container) {
-                // Clear existing listeners
-                const oldAddButton = this.addButton;
-                const newAddButton = oldAddButton.cloneNode(true);
-                oldAddButton.parentNode.replaceChild(newAddButton, oldAddButton);
-                this.addButton = newAddButton;
-
-                // Add click listener to toggle modal
-                this.addButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.modal.classList.toggle('active');
-                });
-
-                // Module option listeners
-                this.modal.querySelectorAll('.module-option').forEach(option => {
-                    option.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        this.createModule(option.dataset.type);
-                        this.modal.classList.remove('active');
-                    });
-                });
-
-                // Close modal when clicking outside
-                document.addEventListener('click', (e) => {
-                    if (this.modal && !this.modal.contains(e.target) && 
-                        this.addButton && !this.addButton.contains(e.target)) {
-                        this.modal.classList.remove('active');
-                    }
-                });
-
-                // Load saved modules
-                this.loadSavedModules();
-            }
-        });
     }
 
     saveModuleState() {
@@ -463,6 +428,15 @@ class ModuleHandler {
     }
 }
 
+// Global initialization
+window.initializeModuleHandler = () => {
+    // Ensure only one module handler exists
+    if (window.moduleHandlerInstance) {
+        window.moduleHandlerInstance.destroy();
+    }
+    window.moduleHandlerInstance = new ModuleHandler();
+};
+
 // Additional styles for modules
 const additionalStyles = `
 .module-option {
@@ -493,8 +467,16 @@ const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
 
-// Initialize when page loads
+// Initialize module handler as early as possible
 document.addEventListener('DOMContentLoaded', async () => {
-    const moduleHandler = new ModuleHandler();
-    await moduleHandler.initializeTheme();
+    // Destroy any existing global module handler
+    if (window.moduleHandlerInstance) {
+        window.moduleHandlerInstance.destroy();
+    }
+
+    // Initialize new module handler
+    window.moduleHandlerInstance = new ModuleHandler();
+
+    // Initialize theme after module handler
+    await window.moduleHandlerInstance.initializeTheme();
 });
