@@ -74,13 +74,13 @@
     <script src="js/postHandler.js"></script>
     <script src="js/profile.js"></script>
     <script>
-        // Ensure ModuleHandler is initialized after profile loads
+        // Ensure single ModuleHandler initialization
         document.addEventListener('DOMContentLoaded', async () => {
-            const moduleHandler = new ModuleHandler();
-            await moduleHandler.initializeTheme();
-
-            // Reinitialize module event listeners 
-            moduleHandler.setupEventListeners();
+            // Check if ModuleHandler is already initialized
+            if (!window.moduleHandlerInstance) {
+                window.moduleHandlerInstance = new ModuleHandler();
+                await window.moduleHandlerInstance.initializeTheme();
+            }
         });
     </script>
 </body>

@@ -34,8 +34,19 @@ class ModuleHandler {
     loadSavedModules() {
         try {
             const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
+            
+            // Clear existing modules first to prevent duplicates
+            this.container.innerHTML = '';
+            this.modules.clear();
+
             savedStates.forEach(state => {
-                this.createModule(state.type, state.position, state.id);
+                // Check if this module doesn't already exist
+                if (!this.modules.has(state.id)) {
+                    this.createModule(state.type, 
+                        { x: state.position.x, y: state.position.y }, 
+                        state.id
+                    );
+                }
             });
         } catch (error) {
             console.error('Error loading saved modules:', error);
@@ -88,6 +99,13 @@ class ModuleHandler {
 
     createModule(type, position = null, id = null) {
         const moduleId = id || `module-${Date.now()}`;
+        
+        // Check if module already exists
+        if (this.modules.has(moduleId)) {
+            console.log(`Module ${moduleId} already exists. Skipping creation.`);
+            return null;
+        }
+
         const module = document.createElement('div');
         module.className = 'module';
         module.dataset.type = type;
@@ -130,81 +148,81 @@ class ModuleHandler {
                 moduleTitle = 'Music Player';
                 content = 'SoundCloud Widget Coming Soon';
                 break;
-                case 'ai':
-                    moduleTitle = 'AI Chat';
-                    content = `
-                        <div class="ai-chat-container">
-                            <div class="ai-messages"></div>
-                            <div class="ai-input-area">
-                                <input type="text" class="ai-message-input" placeholder="Ask me anything...">
-                                <button class="ai-send-btn">Send</button>
-                            </div>
+            case 'ai':
+                moduleTitle = 'AI Chat';
+                content = `
+                    <div class="ai-chat-container">
+                        <div class="ai-messages"></div>
+                        <div class="ai-input-area">
+                            <input type="text" class="ai-message-input" placeholder="Ask me anything...">
+                            <button class="ai-send-btn">Send</button>
                         </div>
-                    `;
+                    </div>
+                `;
+                
+                // Slight delay to ensure DOM is ready
+                setTimeout(() => {
+                    const messagesContainer = module.querySelector('.ai-messages');
+                    const messageInput = module.querySelector('.ai-message-input');
+                    const sendButton = module.querySelector('.ai-send-btn');
+    
+                    const addMessage = (message, sender) => {
+                        const messageEl = document.createElement('div');
+                        messageEl.classList.add('ai-message', sender);
+                        messageEl.textContent = message;
+                        messagesContainer.appendChild(messageEl);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    };
+    
+                    const sendMessage = async () => {
+                        const message = messageInput.value.trim();
+                        if (!message) return;
                     
-                    // Slight delay to ensure DOM is ready
-                    setTimeout(() => {
-                        const messagesContainer = module.querySelector('.ai-messages');
-                        const messageInput = module.querySelector('.ai-message-input');
-                        const sendButton = module.querySelector('.ai-send-btn');
-                
-                        const addMessage = (message, sender) => {
-                            const messageEl = document.createElement('div');
-                            messageEl.classList.add('ai-message', sender);
-                            messageEl.textContent = message;
-                            messagesContainer.appendChild(messageEl);
-                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                        };
-                
-                        const sendMessage = async () => {
-                            const message = messageInput.value.trim();
-                            if (!message) return;
-                        
-                            // Show user message
-                            addMessage(message, 'user-message');
-                            messageInput.value = '';
-                        
-                            try {
-                                // Prevent dragging during API call
-                                module.classList.remove('dragging');
-                        
-                                // Disable input during request
-                                messageInput.disabled = true;
-                                sendButton.disabled = true;
-                        
-                                // Send message to backend
-                                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
-                                    method: 'POST',
-                                    body: JSON.stringify({ 
-                                        walletAddress: SessionManager.getWalletAddress(),
-                                        message 
-                                    })
-                                });
-                        
-                                // Show AI response
-                                addMessage(response.message, 'ai-message');
-                            } catch (error) {
-                                addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
-                                console.error('AI Chat Error:', error);
-                            } finally {
-                                messageInput.disabled = false;
-                                sendButton.disabled = false;
-                                messageInput.focus();
-                            }
-                        };
-                
-                        // Send on button click
-                        sendButton.addEventListener('click', sendMessage);
-                
-                        // Send on Enter key
-                        messageInput.addEventListener('keypress', (e) => {
-                            if (e.key === 'Enter') {
-                                e.preventDefault();
-                                sendMessage();
-                            }
-                        });
-                    }, 100);
-                    break;
+                        // Show user message
+                        addMessage(message, 'user-message');
+                        messageInput.value = '';
+                    
+                        try {
+                            // Prevent dragging during API call
+                            module.classList.remove('dragging');
+                    
+                            // Disable input during request
+                            messageInput.disabled = true;
+                            sendButton.disabled = true;
+                    
+                            // Send message to backend
+                            const response = await makeApiCall(API_ENDPOINTS.aiChat, {
+                                method: 'POST',
+                                body: JSON.stringify({ 
+                                    walletAddress: SessionManager.getWalletAddress(),
+                                    message 
+                                })
+                            });
+                    
+                            // Show AI response
+                            addMessage(response.message, 'ai-message');
+                        } catch (error) {
+                            addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
+                            console.error('AI Chat Error:', error);
+                        } finally {
+                            messageInput.disabled = false;
+                            sendButton.disabled = false;
+                            messageInput.focus();
+                        }
+                    };
+    
+                    // Send on button click
+                    sendButton.addEventListener('click', sendMessage);
+    
+                    // Send on Enter key
+                    messageInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            sendMessage();
+                        }
+                    });
+                }, 100);
+                break;
             case 'market':
                 moduleTitle = 'Crypto Market';
                 content = 'Crypto Prices Coming Soon';

@@ -50,5 +50,15 @@
     <script src="js/session.js"></script>
     <script src="js/postHandler.js"></script>
     <script src="js/feed.js"></script>
+    <script>
+        // Ensure single ModuleHandler initialization
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check if ModuleHandler is already initialized
+            if (!window.moduleHandlerInstance) {
+                window.moduleHandlerInstance = new ModuleHandler();
+                await window.moduleHandlerInstance.initializeTheme();
+            }
+        });
+    </script>
 </body>
 </html>
