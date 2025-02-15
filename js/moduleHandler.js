@@ -158,25 +158,28 @@ class ModuleHandler {
                     const sendMessage = async () => {
                         const message = messageInput.value.trim();
                         if (!message) return;
-            
+                    
                         // Show user message
                         addMessage(message, 'user-message');
                         messageInput.value = '';
-            
+                    
                         try {
+                            // Prevent dragging during API call
+                            module.classList.remove('dragging');
+                    
                             // Disable input during request
                             messageInput.disabled = true;
                             sendButton.disabled = true;
-            
+                    
                             // Send message to backend
-                            const response = await makeApiCall('/api/ai/chat', {
+                            const response = await makeApiCall(`${API_ENDPOINTS.users}/chat`, {
                                 method: 'POST',
                                 body: JSON.stringify({ 
                                     walletAddress: SessionManager.getWalletAddress(),
                                     message 
                                 })
                             });
-            
+                    
                             // Show AI response
                             addMessage(response.message, 'ai-message');
                         } catch (error) {
