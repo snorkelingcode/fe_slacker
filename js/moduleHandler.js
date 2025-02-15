@@ -130,9 +130,72 @@ class ModuleHandler {
                 moduleTitle = 'Music Player';
                 content = 'SoundCloud Widget Coming Soon';
                 break;
-            case 'ai':
-                moduleTitle = 'AI Chat';
-                content = 'ChatGPT Integration Coming Soon';
+                case 'ai':
+                    moduleTitle = 'AI Chat';
+                    content = `
+                        <div class="ai-chat-container">
+                            <div class="ai-messages"></div>
+                            <div class="ai-input-area">
+                                <input type="text" class="ai-message-input" placeholder="Ask me anything...">
+                                <button class="ai-send-btn">Send</button>
+                            </div>
+                        </div>
+                    `;
+                break;
+                setTimeout(() => {
+                    const messagesContainer = module.querySelector('.ai-messages');
+                    const messageInput = module.querySelector('.ai-message-input');
+                    const sendButton = module.querySelector('.ai-send-btn');
+            
+                    const addMessage = (message, sender) => {
+                        const messageEl = document.createElement('div');
+                        messageEl.classList.add('ai-message', sender);
+                        messageEl.textContent = message;
+                        messagesContainer.appendChild(messageEl);
+                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    };
+            
+                    const sendMessage = async () => {
+                        const message = messageInput.value.trim();
+                        if (!message) return;
+            
+                        // Show user message
+                        addMessage(message, 'user-message');
+                        messageInput.value = '';
+            
+                        try {
+                            // Disable input during request
+                            messageInput.disabled = true;
+                            sendButton.disabled = true;
+            
+                            // Send message to backend
+                            const response = await makeApiCall('/api/ai/chat', {
+                                method: 'POST',
+                                body: JSON.stringify({ 
+                                    walletAddress: SessionManager.getWalletAddress(),
+                                    message 
+                                })
+                            });
+            
+                            // Show AI response
+                            addMessage(response.message, 'ai-message');
+                        } catch (error) {
+                            addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
+                            console.error('AI Chat Error:', error);
+                        } finally {
+                            messageInput.disabled = false;
+                            sendButton.disabled = false;
+                        }
+                    };
+            
+                    // Send on button click
+                    sendButton.addEventListener('click', sendMessage);
+            
+                    // Send on Enter key
+                    messageInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') sendMessage();
+                    });
+                }, 100);
                 break;
             case 'market':
                 moduleTitle = 'Crypto Market';
@@ -318,3 +381,4 @@ document.addEventListener('DOMContentLoaded', async () => {
     const moduleHandler = new ModuleHandler();
     await moduleHandler.initializeTheme();
 });
+
