@@ -1293,4 +1293,28 @@ body {
     border-radius: 6px;
     cursor: pointer;
 }
-/*something to push*/
+
+.module-close:hover {
+    background-color: #f0f2f5;
+    color: #dc3545;
+}
+
+.module-dock-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 18px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: all 0.2s;
+    margin-right: 8px;
+}
+
+.module-dock-btn:hover {
+    background-color: var(--bg-accent);
+}
+
+.module[data-is-docked="true"] {
+    border: 2px solid var(--text-secondary);
+}

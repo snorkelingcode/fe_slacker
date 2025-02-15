@@ -5,7 +5,8 @@ const API_ENDPOINTS = {
     users: `${API_BASE_URL}users`,
     comments: (postId) => `${API_BASE_URL}posts/${postId}/comments`,
     aiChat: `${API_BASE_URL}ai/chat`,
-    upload: `${API_BASE_URL}upload`
+    upload: `${API_BASE_URL}upload`,
+    modules: `${API_BASE_URL}users/modules`
 };
 
 const DEFAULT_FETCH_OPTIONS = {

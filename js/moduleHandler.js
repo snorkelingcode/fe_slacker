@@ -4,7 +4,6 @@ class ModuleHandler {
         this.isDragging = false;
         this.modules = new Map();
         
-        // Check if we should initialize
         if (!SessionManager.isConnected()) {
             console.log('No active session, skipping module initialization');
             return;
@@ -13,15 +12,12 @@ class ModuleHandler {
         this.addButton = document.getElementById('addModuleButton');
         this.modal = document.getElementById('moduleModal');
         this.container = document.getElementById('moduleContainer');
+        this.currentPath = window.location.pathname;
 
         if (!this.container) {
             console.log('Module container not found, skipping initialization');
             return;
         }
-
-        // Load saved theme immediately
-        this.currentTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', this.currentTheme);
 
         this.setupEventListeners();
         this.loadSavedModules();
@@ -36,79 +32,82 @@ class ModuleHandler {
                 position: {
                     x: rect.left,
                     y: rect.top
-                }
+                },
+                isDocked: module.dataset.isDocked === 'true',
+                page: this.currentPath,
+                settings: module.dataset.settings || '{}'
             };
         });
-        localStorage.setItem('moduleStates', JSON.stringify(moduleStates));
+
+        const walletAddress = SessionManager.getWalletAddress();
+        if (!walletAddress) return;
+
+        // Save to localStorage for immediate access
+        localStorage.setItem(`moduleStates_${walletAddress}`, JSON.stringify(moduleStates));
+
+        // Save to backend for persistence
+        this.saveModulesToBackend(moduleStates);
     }
 
-    loadSavedModules() {
+    async saveModulesToBackend(moduleStates) {
         try {
-            const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
-            savedStates.forEach(state => {
-                this.createModule(state.type, state.position, state.id);
+            const walletAddress = SessionManager.getWalletAddress();
+            await makeApiCall(`${API_ENDPOINTS.users}/modules`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    walletAddress,
+                    modules: moduleStates
+                })
             });
+        } catch (error) {
+            console.error('Error saving modules to backend:', error);
+        }
+    }
+
+    async loadSavedModules() {
+        try {
+            const walletAddress = SessionManager.getWalletAddress();
+            if (!walletAddress) return;
+
+            // First try to load from localStorage for immediate display
+            const localStates = localStorage.getItem(`moduleStates_${walletAddress}`);
+            if (localStates) {
+                JSON.parse(localStates).forEach(state => {
+                    if (state.page === this.currentPath || state.isDocked) {
+                        this.createModule(state.type, state.position, state.id, state.isDocked, state.settings);
+                    }
+                });
+            }
+
+            // Then fetch from backend for any updates
+            const response = await makeApiCall(`${API_ENDPOINTS.users}/modules/${walletAddress}`);
+            if (response && response.modules) {
+                // Clear existing modules
+                this.modules.forEach(module => module.remove());
+                this.modules.clear();
+
+                // Create modules from backend data
+                response.modules.forEach(state => {
+                    if (state.page === this.currentPath || state.isDocked) {
+                        this.createModule(state.type, state.position, state.id, state.isDocked, state.settings);
+                    }
+                });
+
+                // Update localStorage with latest data
+                localStorage.setItem(`moduleStates_${walletAddress}`, JSON.stringify(response.modules));
+            }
         } catch (error) {
             console.error('Error loading saved modules:', error);
         }
     }
 
-    async initializeTheme() {
-        try {
-            const walletAddress = SessionManager.getWalletAddress();
-            if (walletAddress) {
-                try {
-                    const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
-                    if (response && response.theme) {
-                        this.currentTheme = response.theme;
-                        localStorage.setItem('theme', response.theme);
-                        this.applyTheme(response.theme);
-                    }
-                } catch (error) {
-                    // If user doesn't exist, just use default theme
-                    console.log('User profile not found, using default theme');
-                    this.applyTheme(this.currentTheme);
-                }
-            }
-        } catch (error) {
-            console.log('Using default theme');
-            this.applyTheme(this.currentTheme);
-        }
-    }
-
-    setupEventListeners() {
-        if (!this.addButton || !this.modal) return;
-
-        this.addButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.modal.classList.toggle('active');
-        });
-
-        document.querySelectorAll('.module-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.createModule(option.dataset.type);
-                this.modal.classList.remove('active');
-            });
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!this.modal.contains(e.target) && !this.addButton.contains(e.target)) {
-                this.modal.classList.remove('active');
-            }
-        });
-
-        // Save module states before page unload
-        window.addEventListener('beforeunload', () => {
-            this.saveModuleState();
-        });
-    }
-
-    createModule(type, position = null, id = null) {
+    createModule(type, position = null, id = null, isDocked = false, settings = '{}') {
         const moduleId = id || `module-${Date.now()}`;
         const module = document.createElement('div');
         module.className = 'module';
         module.dataset.type = type;
+        module.dataset.isDocked = isDocked.toString();
+        module.dataset.settings = settings;
         module.id = moduleId;
 
         // Set position
@@ -119,6 +118,19 @@ class ModuleHandler {
             const initialY = Math.random() * (window.innerHeight - 200);
             module.style.transform = `translate(${initialX}px, ${initialY}px)`;
         }
+
+        const dockButton = document.createElement('button');
+        dockButton.className = 'module-dock-btn';
+        dockButton.innerHTML = isDocked ? '📌' : '📍';
+        dockButton.title = isDocked ? 'Undock Module' : 'Dock Module';
+        dockButton.onclick = (e) => {
+            e.stopPropagation();
+            const newDocked = !isDocked;
+            module.dataset.isDocked = newDocked.toString();
+            dockButton.innerHTML = newDocked ? '📌' : '📍';
+            dockButton.title = newDocked ? 'Undock Module' : 'Dock Module';
+            this.saveModuleState();
+        };
 
         let content = '';
         let moduleTitle = '';
@@ -264,8 +276,14 @@ class ModuleHandler {
             });
         }
 
+        const header = module.querySelector('.module-header');
+        header.insertBefore(dockButton, header.firstChild);
+
+        this.container.appendChild(module);
+        this.modules.set(moduleId, module);
         this.setupModuleDragging(module);
         this.saveModuleState();
+        
         return module;
     }
 
