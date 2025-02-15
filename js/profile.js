@@ -1,5 +1,12 @@
 class WalletConnector {
     constructor() {
+
+        if (SessionManager.isConnected() && !window.location.href.includes('signout=true')) {
+            console.log('Session exists, redirecting to feed');
+            window.location.href = 'index.html';
+            return;
+        }
+
         this.init();
     }
 

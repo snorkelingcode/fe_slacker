@@ -1,6 +1,10 @@
 class SessionManager {
+    static WALLET_ADDRESS_KEY = 'walletAddress';
+    static LAST_CONNECTED_KEY = 'lastConnected';
+    static IS_GUEST_KEY = 'isGuest';
     static GUEST_ID_KEY = 'guestIdentifier';
-    static GUEST_ADDRESS_KEY = 'persistentGuestAddress'; // Changed key name to be more descriptive
+    static GUEST_ADDRESS_KEY = 'persistentGuestAddress';
+    static SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
     // Get or create a persistent guest identifier (for database tracking)
     static getGuestIdentifier() {
@@ -38,16 +42,21 @@ class SessionManager {
         }
 
         try {
-            localStorage.setItem(this.WALLET_ADDRESS_KEY, address.toLowerCase());
+            const formattedAddress = address.toLowerCase();
+            localStorage.setItem(this.WALLET_ADDRESS_KEY, formattedAddress);
             localStorage.setItem(this.LAST_CONNECTED_KEY, new Date().toISOString());
             localStorage.setItem(this.IS_GUEST_KEY, isGuest.toString());
+            console.log('Session saved:', {
+                address: formattedAddress,
+                isGuest,
+                timestamp: new Date().toISOString()
+            });
             return true;
         } catch (error) {
             console.error('Error setting wallet address:', error);
             return false;
         }
     }
-
 
     static getWalletAddress() {
         try {
@@ -56,16 +65,18 @@ class SessionManager {
             const now = new Date();
 
             if (!address || !lastConnected) {
+                console.log('No session found');
                 return null;
             }
 
             // Check if session has expired
             if (now - lastConnected > this.SESSION_DURATION) {
+                console.log('Session expired');
                 this.clearSession();
                 return null;
             }
 
-            // Update last connected time
+            // Update last connected time to keep session alive
             localStorage.setItem(this.LAST_CONNECTED_KEY, now.toISOString());
             return address.toLowerCase();
         } catch (error) {
@@ -74,13 +85,16 @@ class SessionManager {
         }
     }
 
-
     static isConnected() {
-        return !!this.getWalletAddress();
+        const address = this.getWalletAddress();
+        const isConnected = !!address;
+        console.log('Checking connection status:', isConnected);
+        return isConnected;
     }
 
     static clearSession() {
         try {
+            console.log('Clearing session...');
             localStorage.removeItem(this.WALLET_ADDRESS_KEY);
             localStorage.removeItem(this.LAST_CONNECTED_KEY);
             localStorage.removeItem(this.IS_GUEST_KEY);
@@ -129,4 +143,9 @@ class SessionManager {
         
         console.log('Profile updated in session');
     }
+}
+
+// Export for use in other files
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = SessionManager;
 }
