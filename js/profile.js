@@ -519,6 +519,48 @@ class WalletConnector {
     
             profileContent.appendChild(postsContainer);
     
+            // Ensure module container is in the document
+            const moduleContainer = document.getElementById('moduleContainer');
+            if (!moduleContainer) {
+                const newModuleContainer = document.createElement('div');
+                newModuleContainer.id = 'moduleContainer';
+                newModuleContainer.className = 'module-container';
+                profileContent.appendChild(newModuleContainer);
+            }
+    
+            // Ensure add module button is in the document
+            let addModuleButton = document.getElementById('addModuleButton');
+            if (!addModuleButton) {
+                addModuleButton = document.createElement('button');
+                addModuleButton.id = 'addModuleButton';
+                addModuleButton.className = 'add-module-btn';
+                addModuleButton.innerHTML = '<span>+</span>';
+                document.body.appendChild(addModuleButton);
+            }
+    
+            // Ensure module modal is in the document
+            let moduleModal = document.getElementById('moduleModal');
+            if (!moduleModal) {
+                moduleModal = document.createElement('div');
+                moduleModal.id = 'moduleModal';
+                moduleModal.className = 'module-modal';
+                moduleModal.innerHTML = `
+                    <button class="module-option" data-type="music">
+                        <span>🎵</span> Music
+                    </button>
+                    <button class="module-option" data-type="ai">
+                        <span>🤖</span> AI
+                    </button>
+                    <button class="module-option" data-type="market">
+                        <span>📈</span> Market
+                    </button>
+                    <button class="module-option" data-type="settings">
+                        <span>⚙️</span> Settings
+                    </button>
+                `;
+                document.body.appendChild(moduleModal);
+            }
+            
             // Add event listeners for post interactions
             document.querySelectorAll('.like-btn').forEach(button => {
                 button.addEventListener('click', async (e) => {
@@ -563,6 +605,12 @@ class WalletConnector {
                         await this.connectMetaMask();
                     });
                 }
+            }
+    
+            // Re-initialize module handler
+            if (window.ModuleHandler) {
+                const moduleHandler = new ModuleHandler();
+                moduleHandler.loadSavedModules();
             }
     
             // Re-initialize sign out button after profile loads
