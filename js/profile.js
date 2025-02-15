@@ -608,10 +608,11 @@ class WalletConnector {
             }
     
             // Re-initialize module handler
-            if (window.ModuleHandler) {
-                const moduleHandler = new ModuleHandler();
-                moduleHandler.loadSavedModules();
-                moduleHandler.setupEventListeners(); // Explicitly reinitialize event listeners
+            if (window.moduleHandlerInstance) {
+                // Ensure event listeners are set up
+                window.moduleHandlerInstance.setupDOMEventListeners();
+            } else if (window.ModuleHandler) {
+                window.moduleHandlerInstance = new ModuleHandler();
             }
     
             // Re-initialize sign out button after profile loads

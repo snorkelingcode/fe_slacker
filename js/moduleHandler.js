@@ -4,16 +4,70 @@ class ModuleHandler {
         this.isDragging = false;
         this.modules = new Map(); // Track active modules
         
-        this.addButton = document.getElementById('addModuleButton');
-        this.modal = document.getElementById('moduleModal');
-        this.container = document.getElementById('moduleContainer');
+        // Ensure these are set after DOM is loaded
+        this.addButton = null;
+        this.modal = null;
+        this.container = null;
 
         // Load saved theme immediately
         this.currentTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', this.currentTheme);
 
-        this.setupEventListeners();
-        this.loadSavedModules();
+        // Defer event listener setup
+        this.setupDOMEventListeners();
+    }
+
+    setupDOMEventListeners() {
+        // Use a defer method to ensure DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            this.addButton = document.getElementById('addModuleButton');
+            this.modal = document.getElementById('moduleModal');
+            this.container = document.getElementById('moduleContainer');
+
+            // Only setup if all elements exist
+            if (this.addButton && this.modal && this.container) {
+                this.setupEventListeners();
+                this.loadSavedModules();
+            }
+        });
+    }
+
+    setupEventListeners() {
+        // Remove existing listeners to prevent duplicates
+        if (this.addButton) {
+            // Clear existing listeners
+            const oldAddButton = this.addButton;
+            const newAddButton = oldAddButton.cloneNode(true);
+            oldAddButton.parentNode.replaceChild(newAddButton, oldAddButton);
+            this.addButton = newAddButton;
+
+            this.addButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.modal.classList.toggle('active');
+            });
+        }
+
+        // Reset module option listeners
+        document.querySelectorAll('.module-option').forEach(option => {
+            // Clear existing listeners
+            const oldOption = option;
+            const newOption = oldOption.cloneNode(true);
+            oldOption.parentNode.replaceChild(newOption, oldOption);
+
+            newOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.createModule(newOption.dataset.type);
+                this.modal.classList.remove('active');
+            });
+        });
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            if (this.modal && !this.modal.contains(e.target) && 
+                this.addButton && !this.addButton.contains(e.target)) {
+                this.modal.classList.remove('active');
+            }
+        });
     }
 
     saveModuleState() {
@@ -67,34 +121,6 @@ class ModuleHandler {
         } catch (error) {
             console.error('Error loading user theme:', error);
         }
-    }
-
-    setupEventListeners() {
-        if (!this.addButton || !this.modal) return;
-
-        this.addButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.modal.classList.toggle('active');
-        });
-
-        document.querySelectorAll('.module-option').forEach(option => {
-            option.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.createModule(option.dataset.type);
-                this.modal.classList.remove('active');
-            });
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!this.modal.contains(e.target) && !this.addButton.contains(e.target)) {
-                this.modal.classList.remove('active');
-            }
-        });
-
-        // Save module states before page unload
-        window.addEventListener('beforeunload', () => {
-            this.saveModuleState();
-        });
     }
 
     createModule(type, position = null, id = null) {
@@ -359,41 +385,28 @@ class ModuleHandler {
     }
 }
 
-// Additional styles
+// Additional styles for modules
 const additionalStyles = `
-.settings-section {
-    padding: 10px;
-}
-
-.settings-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: var(--text-primary);
-}
-
-.theme-switcher {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.theme-option {
+.module-option {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 10px;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
     cursor: pointer;
-    padding: 8px;
-    border-radius: 4px;
+    border-radius: 6px;
     transition: background-color 0.2s;
 }
 
-.theme-option:hover {
-    background-color: var(--bg-primary);
+.module-option:hover {
+    background-color: var(--bg-accent);
 }
 
-.settings-content {
-    width: 100%;
+.module-option span {
+    margin-right: 10px;
 }
 `;
 
@@ -407,4 +420,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     const moduleHandler = new ModuleHandler();
     await moduleHandler.initializeTheme();
 });
-
