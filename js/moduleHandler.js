@@ -141,65 +141,70 @@ class ModuleHandler {
                             </div>
                         </div>
                     `;
-                break;
-                setTimeout(() => {
-                    const messagesContainer = module.querySelector('.ai-messages');
-                    const messageInput = module.querySelector('.ai-message-input');
-                    const sendButton = module.querySelector('.ai-send-btn');
-            
-                    const addMessage = (message, sender) => {
-                        const messageEl = document.createElement('div');
-                        messageEl.classList.add('ai-message', sender);
-                        messageEl.textContent = message;
-                        messagesContainer.appendChild(messageEl);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    };
-            
-                    const sendMessage = async () => {
-                        const message = messageInput.value.trim();
-                        if (!message) return;
                     
-                        // Show user message
-                        addMessage(message, 'user-message');
-                        messageInput.value = '';
-                    
-                        try {
-                            // Prevent dragging during API call
-                            module.classList.remove('dragging');
-                    
-                            // Disable input during request
-                            messageInput.disabled = true;
-                            sendButton.disabled = true;
-                    
-                            // Send message to backend
-                            const response = await makeApiCall(`${API_ENDPOINTS.users}/chat`, {
-                                method: 'POST',
-                                body: JSON.stringify({ 
-                                    walletAddress: SessionManager.getWalletAddress(),
-                                    message 
-                                })
-                            });
-                    
-                            // Show AI response
-                            addMessage(response.message, 'ai-message');
-                        } catch (error) {
-                            addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
-                            console.error('AI Chat Error:', error);
-                        } finally {
-                            messageInput.disabled = false;
-                            sendButton.disabled = false;
-                        }
-                    };
-            
-                    // Send on button click
-                    sendButton.addEventListener('click', sendMessage);
-            
-                    // Send on Enter key
-                    messageInput.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') sendMessage();
-                    });
-                }, 100);
-                break;
+                    // Slight delay to ensure DOM is ready
+                    setTimeout(() => {
+                        const messagesContainer = module.querySelector('.ai-messages');
+                        const messageInput = module.querySelector('.ai-message-input');
+                        const sendButton = module.querySelector('.ai-send-btn');
+                
+                        const addMessage = (message, sender) => {
+                            const messageEl = document.createElement('div');
+                            messageEl.classList.add('ai-message', sender);
+                            messageEl.textContent = message;
+                            messagesContainer.appendChild(messageEl);
+                            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                        };
+                
+                        const sendMessage = async () => {
+                            const message = messageInput.value.trim();
+                            if (!message) return;
+                        
+                            // Show user message
+                            addMessage(message, 'user-message');
+                            messageInput.value = '';
+                        
+                            try {
+                                // Prevent dragging during API call
+                                module.classList.remove('dragging');
+                        
+                                // Disable input during request
+                                messageInput.disabled = true;
+                                sendButton.disabled = true;
+                        
+                                // Send message to backend
+                                const response = await makeApiCall(API_ENDPOINTS.users + '/chat', {
+                                    method: 'POST',
+                                    body: JSON.stringify({ 
+                                        walletAddress: SessionManager.getWalletAddress(),
+                                        message 
+                                    })
+                                });
+                        
+                                // Show AI response
+                                addMessage(response.message, 'ai-message');
+                            } catch (error) {
+                                addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
+                                console.error('AI Chat Error:', error);
+                            } finally {
+                                messageInput.disabled = false;
+                                sendButton.disabled = false;
+                                messageInput.focus();
+                            }
+                        };
+                
+                        // Send on button click
+                        sendButton.addEventListener('click', sendMessage);
+                
+                        // Send on Enter key
+                        messageInput.addEventListener('keypress', (e) => {
+                            if (e.key === 'Enter') {
+                                e.preventDefault();
+                                sendMessage();
+                            }
+                        });
+                    }, 100);
+                    break;
             case 'market':
                 moduleTitle = 'Crypto Market';
                 content = 'Crypto Prices Coming Soon';
