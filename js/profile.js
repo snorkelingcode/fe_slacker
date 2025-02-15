@@ -157,21 +157,23 @@ class WalletConnector {
     }
 
     async createOrLoadProfile() {
+        console.log('Creating or loading profile for address:', this.account);
         try {
             try {
-                // First try to load existing profile
-                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account.toLowerCase()}`);
+                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${this.account}`);
                 console.log('Existing profile loaded:', response);
                 return response;
             } catch (error) {
-                console.log('No existing profile, creating new one...');
-                // If profile doesn't exist, create a new one
+                console.log('No existing profile, creating new one...', error);
+                
                 const newProfile = {
-                    walletAddress: this.account.toLowerCase(),
+                    walletAddress: this.account,
                     username: `User_${this.account.substring(2, 6)}`,
                     bio: 'New to Slacker',
                     theme: localStorage.getItem('theme') || 'light'
                 };
+    
+                console.log('Creating new profile with data:', newProfile);
         
                 const response = await makeApiCall(`${API_ENDPOINTS.users}/profile`, {
                     method: 'POST',
@@ -185,7 +187,7 @@ class WalletConnector {
             console.error('Error in createOrLoadProfile:', error);
             throw error;
         }
-    }  
+    } 
 
     async connectAsGuest() {
         console.log('=== Connecting as Guest ===');
@@ -246,7 +248,12 @@ class WalletConnector {
                 throw new Error('No accounts found');
             }
     
-            this.account = accounts[0];
+            // Ensure proper wallet address format
+            this.account = accounts[0].toLowerCase(); // Convert to lowercase
+            if (!this.account.startsWith('0x')) {
+                this.account = '0x' + this.account;
+            }
+            
             this.web3 = new Web3(window.ethereum);
     
             console.log('Setting wallet address in session:', this.account);
@@ -254,8 +261,8 @@ class WalletConnector {
     
             try {
                 console.log('Creating/loading profile...');
-                await this.createOrLoadProfile();
-                console.log('Profile handled successfully');
+                const profile = await this.createOrLoadProfile();
+                console.log('Profile handled successfully:', profile);
                 
                 // Add a small delay before redirect to ensure session is saved
                 setTimeout(() => {
@@ -277,7 +284,6 @@ class WalletConnector {
             throw error;
         }
     }
-
     // Function to ensure modal is visible and properly positioned
     positionModal(modal) {
         // Scroll to top when modal opens

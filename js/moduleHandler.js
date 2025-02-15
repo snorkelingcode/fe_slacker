@@ -2,11 +2,22 @@ class ModuleHandler {
     constructor() {
         this.draggedModule = null;
         this.isDragging = false;
-        this.modules = new Map(); // Track active modules
+        this.modules = new Map();
         
+        // Check if we should initialize
+        if (!SessionManager.isConnected()) {
+            console.log('No active session, skipping module initialization');
+            return;
+        }
+
         this.addButton = document.getElementById('addModuleButton');
         this.modal = document.getElementById('moduleModal');
         this.container = document.getElementById('moduleContainer');
+
+        if (!this.container) {
+            console.log('Module container not found, skipping initialization');
+            return;
+        }
 
         // Load saved theme immediately
         this.currentTheme = localStorage.getItem('theme') || 'light';
@@ -392,8 +403,13 @@ styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
 
 // Initialize when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-    const moduleHandler = new ModuleHandler();
-    await moduleHandler.initializeTheme();
+document.addEventListener('DOMContentLoaded', () => {
+    const moduleContainer = document.getElementById('moduleContainer');
+    if (moduleContainer && SessionManager.isConnected()) {
+        console.log('Initializing ModuleHandler...');
+        new ModuleHandler();
+    } else {
+        console.log('Skipping ModuleHandler initialization');
+    }
 });
 
