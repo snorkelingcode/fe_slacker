@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://be-slacker.vercel.app/api/';
+const API_BASE_URL = '/api/';
 
 const API_ENDPOINTS = {
     posts: `${API_BASE_URL}posts`,
@@ -62,24 +62,25 @@ const makeApiCall = async (endpoint, options = {}) => {
             headers: {
                 ...DEFAULT_FETCH_OPTIONS.headers,
                 ...options.headers,
-            }
+            },
+            credentials: 'include' // Add this line
         };
 
         const response = await fetch(endpoint, finalOptions);
-        const contentType = response.headers.get("content-type");
         
-        // Log response details for debugging
+        // Log full response details for debugging
         console.log('Response status:', response.status);
         console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-        let data;
-        if (contentType && contentType.includes("application/json")) {
-            data = await response.json();
-        } else {
+        // Handle non-JSON responses
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
             const text = await response.text();
-            console.warn('Non-JSON response:', text);
-            throw new Error('Invalid response format');
+            console.error('Non-JSON response:', text);
+            throw new Error(`Invalid response format: ${text}`);
         }
+
+        const data = await response.json();
 
         if (!response.ok) {
             throw new Error(data.message || `HTTP error! status: ${response.status}`);
