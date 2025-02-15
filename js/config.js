@@ -4,7 +4,8 @@ const API_ENDPOINTS = {
     posts: `${API_BASE_URL}posts`,
     users: `${API_BASE_URL}users`,
     comments: (postId) => `${API_BASE_URL}posts/${postId}/comments`,
-    aiChat: `${API_BASE_URL}ai/chat`
+    aiChat: `${API_BASE_URL}ai/chat`,
+    upload: `${API_BASE_URL}upload`
 };
 
 const DEFAULT_FETCH_OPTIONS = {
@@ -53,44 +54,42 @@ const handleApiResponse = async (response) => {
 
 const makeApiCall = async (endpoint, options = {}) => {
     try {
-        console.log('Network Request:', {
-            endpoint,
-            method: options.method || 'GET',
-            headers: {
-                ...DEFAULT_FETCH_OPTIONS.headers,
-                ...options.headers
-            },
-            body: options.body ? JSON.parse(options.body) : null
-        });
-
-        const controller = new AbortController();
-        // Increase timeout to 30 seconds
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-
+        console.log('Making API call to:', endpoint);
+        
         const finalOptions = {
             ...DEFAULT_FETCH_OPTIONS,
             ...options,
             headers: {
                 ...DEFAULT_FETCH_OPTIONS.headers,
                 ...options.headers,
-            },
-            signal: controller.signal
+            }
         };
 
-        const startTime = Date.now();
         const response = await fetch(endpoint, finalOptions);
-        const endTime = Date.now();
-
-        console.log('Network Response Time:', endTime - startTime, 'ms');
-
-        clearTimeout(timeoutId);
+        const contentType = response.headers.get("content-type");
         
-        return await handleApiResponse(response);
+        // Log response details for debugging
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+        let data;
+        if (contentType && contentType.includes("application/json")) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.warn('Non-JSON response:', text);
+            throw new Error('Invalid response format');
+        }
+
+        if (!response.ok) {
+            throw new Error(data.message || `HTTP error! status: ${response.status}`);
+        }
+
+        return data;
     } catch (error) {
-        console.error('Detailed Network Error:', {
-            name: error.name,
-            message: error.message,
-            code: error.code,
+        console.error('API call failed:', {
+            endpoint,
+            error: error.message,
             stack: error.stack
         });
         throw error;

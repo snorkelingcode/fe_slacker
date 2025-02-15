@@ -32,62 +32,76 @@ class SessionManager {
     }
 
     static setWalletAddress(address, isGuest = false) {
-        console.log('Setting wallet address:', address, 'isGuest:', isGuest);
-        if (isGuest) {
-            const guestId = this.getGuestIdentifier();
-            localStorage.setItem('guestId', guestId);
+        if (!address) {
+            console.error('Attempted to set empty wallet address');
+            return false;
         }
-        localStorage.setItem('walletAddress', address);
-        localStorage.setItem('lastConnected', new Date().toString());
-        localStorage.setItem('isGuest', isGuest.toString());
-        
-        console.log('Session storage after set:', {
-            walletAddress: localStorage.getItem('walletAddress'),
-            lastConnected: localStorage.getItem('lastConnected'),
-            isGuest: localStorage.getItem('isGuest'),
-            guestId: localStorage.getItem('guestId')
-        });
+
+        try {
+            localStorage.setItem(this.WALLET_ADDRESS_KEY, address.toLowerCase());
+            localStorage.setItem(this.LAST_CONNECTED_KEY, new Date().toISOString());
+            localStorage.setItem(this.IS_GUEST_KEY, isGuest.toString());
+            return true;
+        } catch (error) {
+            console.error('Error setting wallet address:', error);
+            return false;
+        }
     }
+
 
     static getWalletAddress() {
-        console.log('Getting wallet address from session...');
-        const address = localStorage.getItem('walletAddress');
-        const lastConnected = new Date(localStorage.getItem('lastConnected'));
-        const now = new Date();
-        const isGuest = localStorage.getItem('isGuest') === 'true';
-        
-        console.log('Session data:', {
-            address,
-            lastConnected,
-            timeSinceLastConnection: now - lastConnected,
-            isGuest
-        });
+        try {
+            const address = localStorage.getItem(this.WALLET_ADDRESS_KEY);
+            const lastConnected = new Date(localStorage.getItem(this.LAST_CONNECTED_KEY));
+            const now = new Date();
 
-        if (lastConnected && (now - lastConnected) > (24 * 60 * 60 * 1000)) {
-            console.log('Session expired, clearing...');
-            this.clearSession();
+            if (!address || !lastConnected) {
+                return null;
+            }
+
+            // Check if session has expired
+            if (now - lastConnected > this.SESSION_DURATION) {
+                this.clearSession();
+                return null;
+            }
+
+            // Update last connected time
+            localStorage.setItem(this.LAST_CONNECTED_KEY, now.toISOString());
+            return address.toLowerCase();
+        } catch (error) {
+            console.error('Error getting wallet address:', error);
             return null;
         }
-        return address;
     }
 
+
     static isConnected() {
-        const isConnected = !!this.getWalletAddress();
-        console.log('Checking connection status:', isConnected);
-        return isConnected;
+        return !!this.getWalletAddress();
     }
 
     static clearSession() {
-        console.log('Clearing session...');
-        // Don't remove guest identifier or address - we want to reuse them
-        const keysToRemove = ['walletAddress', 'lastConnected', 'isGuest'];
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        
-        console.log('Session storage after clear:', {
-            walletAddress: localStorage.getItem('walletAddress'),
-            lastConnected: localStorage.getItem('lastConnected'),
-            isGuest: localStorage.getItem('isGuest')
-        });
+        try {
+            localStorage.removeItem(this.WALLET_ADDRESS_KEY);
+            localStorage.removeItem(this.LAST_CONNECTED_KEY);
+            localStorage.removeItem(this.IS_GUEST_KEY);
+        } catch (error) {
+            console.error('Error clearing session:', error);
+        }
+    }
+
+    static async validateSession() {
+        const address = this.getWalletAddress();
+        if (!address) return false;
+
+        try {
+            // Verify the wallet address exists in the backend
+            const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${address}`);
+            return !!response;
+        } catch (error) {
+            console.error('Session validation failed:', error);
+            this.clearSession();
+            return false;
+        }
     }
 
     static getProfile() {

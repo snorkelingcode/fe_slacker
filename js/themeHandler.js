@@ -1,4 +1,3 @@
-// theme-handler.js
 class ThemeHandler {
     constructor() {
         // Initialize with system default or saved theme
