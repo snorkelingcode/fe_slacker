@@ -138,23 +138,20 @@ class ModuleHandler {
         try {
             const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
             
-            // Prevent duplicate modules
-            const existingTypes = new Set();
+            // Get the current page URL to determine context
+            const currentPage = window.location.pathname;
 
-            // If there are saved modules, recreate them
-            savedStates.forEach(state => {
-                // Check if a module of this type has already been created
-                if (!existingTypes.has(state.type)) {
-                    const module = this.createModule(
-                        state.type, 
-                        { x: state.position.x, y: state.position.y }, 
-                        state.id
-                    );
-                    
-                    // Mark this type as created
-                    existingTypes.add(state.type);
-                }
-            });
+            // Find the first saved module state
+            const moduleToLoad = savedStates.length > 0 ? savedStates[0] : null;
+
+            // Only load a module if we have a saved state and we're on a page with a module container
+            if (moduleToLoad && this.container) {
+                this.createModule(
+                    moduleToLoad.type, 
+                    { x: moduleToLoad.position.x, y: moduleToLoad.position.y }, 
+                    moduleToLoad.id
+                );
+            }
         } catch (error) {
             console.error('Error loading saved modules:', error);
         }
