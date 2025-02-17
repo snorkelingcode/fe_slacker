@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Slacker</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script>
+        // Apply theme immediately to prevent flash of wrong theme
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="logo">
+            Slacker
+        </div>
+        <div class="nav-buttons">
+            <a href="index.html" class="nav-button">Feed</a>
+            <a href="profile.html" class="nav-button">Profile</a>
+            <button id="signOutButton" class="nav-button sign-out-btn" style="display: none;">Sign Out</button>
+        </div>
+    </nav>
+    <main>
+        <div class="notifications-container"></div>
+    </main>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.6.0/web3.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/theme-handler.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/moduleHandler.js"></script>
+    <script src="js/session.js"></script>
+    <script src="js/notificationsHandler.js"></script>
+</body>
+</html>
