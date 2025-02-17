@@ -1,13 +1,15 @@
 class ModuleHandler {
     constructor() {
-        // Reset any existing module handler
-        if (window.moduleHandlerInstance) {
-            window.moduleHandlerInstance.destroy();
+        // Ensure singleton pattern
+        if (ModuleHandler.instance) {
+            return ModuleHandler.instance;
         }
+        ModuleHandler.instance = this;
 
+        // Reset state
         this.draggedModule = null;
         this.isDragging = false;
-        this.modules = new Map(); // Track active modules
+        this.modules = new Map();
         
         // Ensure these are set after DOM is loaded
         this.addButton = null;
@@ -18,76 +20,77 @@ class ModuleHandler {
         this.currentTheme = localStorage.getItem('theme') || 'light';
         document.documentElement.setAttribute('data-theme', this.currentTheme);
 
-        // Use a single, robust method to set up event listeners
-        this.initializeModuleSystem();
+        // Initialize only if DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initializeModuleSystem());
+        } else {
+            this.initializeModuleSystem();
+        }
     }
 
     destroy() {
-        // Remove existing event listeners
         if (this.addButton) {
             this.addButton.removeEventListener('click', this.handleAddButtonClick);
         }
         
-        // Do not clear modules to maintain persistence
+        // Remove all module option click listeners
+        if (this.modal) {
+            this.modal.querySelectorAll('.module-option').forEach(option => {
+                option.replaceWith(option.cloneNode(true));
+            });
+        }
+        
         this.saveModuleState();
     }
 
     initializeModuleSystem() {
-        // Defer DOM-dependent initialization
-        const initializeDOM = () => {
-            console.log('Initializing Module System');
-            
-            // Find essential elements
-            this.addButton = document.getElementById('addModuleButton');
-            this.modal = document.getElementById('moduleModal');
-            this.container = document.getElementById('moduleContainer');
+        console.log('Initializing Module System');
+        
+        // Find essential elements
+        this.addButton = document.getElementById('addModuleButton');
+        this.modal = document.getElementById('moduleModal');
+        this.container = document.getElementById('moduleContainer');
 
-            // Validate all required elements exist
-            if (!this.addButton || !this.modal || !this.container) {
-                console.warn('Module system elements not fully present', {
-                    addButton: !!this.addButton,
-                    modal: !!this.modal,
-                    container: !!this.container
-                });
-                return;
-            }
-
-            // Clear any existing modules in the container
-            this.container.innerHTML = '';
-            this.modules.clear();
-
-            // Setup add button click handler with proper binding
-            this.handleAddButtonClick = this.handleAddButtonClick.bind(this);
-            this.addButton.addEventListener('click', this.handleAddButtonClick);
-
-            // Setup module option click handlers
-            this.createModuleHandler = this.createModuleHandler.bind(this);
-            this.modal.querySelectorAll('.module-option').forEach(option => {
-                option.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.createModuleHandler(e);
-                });
+        // Validate all required elements exist
+        if (!this.addButton || !this.modal || !this.container) {
+            console.warn('Module system elements not fully present', {
+                addButton: !!this.addButton,
+                modal: !!this.modal,
+                container: !!this.container
             });
-
-            // Close modal when clicking outside
-            document.addEventListener('click', (e) => {
-                if (this.modal && 
-                    !this.modal.contains(e.target) && 
-                    !this.addButton.contains(e.target)) {
-                    this.modal.classList.remove('active');
-                }
-            });
-
-            // Load saved modules
-            this.loadSavedModules();
-        };
-
-        // Use multiple event listeners to ensure initialization
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', initializeDOM);
-        } else {
-            initializeDOM();
+            return;
         }
+
+        // Clear existing listeners by cloning and replacing
+        const newAddButton = this.addButton.cloneNode(true);
+        this.addButton.parentNode.replaceChild(newAddButton, this.addButton);
+        this.addButton = newAddButton;
+
+        // Setup add button click handler with proper binding
+        this.handleAddButtonClick = this.handleAddButtonClick.bind(this);
+        this.addButton.addEventListener('click', this.handleAddButtonClick);
+
+        // Clear existing module option listeners and set up new ones
+        this.modal.querySelectorAll('.module-option').forEach(option => {
+            const newOption = option.cloneNode(true);
+            option.parentNode.replaceChild(newOption, option);
+            newOption.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.createModuleHandler(e);
+            });
+        });
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            if (this.modal && 
+                !this.modal.contains(e.target) && 
+                !this.addButton.contains(e.target)) {
+                this.modal.classList.remove('active');
+            }
+        });
+
+        // Load saved modules
+        this.loadSavedModules();
     }
 
     createModuleHandler(e) {
@@ -137,21 +140,13 @@ class ModuleHandler {
     loadSavedModules() {
         try {
             const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
-            
-            // Get the current page URL to determine context
-            const currentPage = window.location.pathname;
-
-            // Find the first saved module state
-            const moduleToLoad = savedStates.length > 0 ? savedStates[0] : null;
-
-            // Only load a module if we have a saved state and we're on a page with a module container
-            if (moduleToLoad && this.container) {
+            savedStates.forEach(moduleState => {
                 this.createModule(
-                    moduleToLoad.type, 
-                    { x: moduleToLoad.position.x, y: moduleToLoad.position.y }, 
-                    moduleToLoad.id
+                    moduleState.type,
+                    moduleState.position,
+                    moduleState.id
                 );
-            }
+            });
         } catch (error) {
             console.error('Error loading saved modules:', error);
         }
@@ -235,69 +230,6 @@ class ModuleHandler {
                         </div>
                     </div>
                 `;
-                
-                // Slight delay to ensure DOM is ready
-                setTimeout(() => {
-                    const messagesContainer = module.querySelector('.ai-messages');
-                    const messageInput = module.querySelector('.ai-message-input');
-                    const sendButton = module.querySelector('.ai-send-btn');
-    
-                    const addMessage = (message, sender) => {
-                        const messageEl = document.createElement('div');
-                        messageEl.classList.add('ai-message', sender);
-                        messageEl.textContent = message;
-                        messagesContainer.appendChild(messageEl);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    };
-    
-                    const sendMessage = async () => {
-                        const message = messageInput.value.trim();
-                        if (!message) return;
-                    
-                        // Show user message
-                        addMessage(message, 'user-message');
-                        messageInput.value = '';
-                    
-                        try {
-                            // Prevent dragging during API call
-                            module.classList.remove('dragging');
-                    
-                            // Disable input during request
-                            messageInput.disabled = true;
-                            sendButton.disabled = true;
-                    
-                            // Send message to backend
-                            const response = await makeApiCall(API_ENDPOINTS.aiChat, {
-                                method: 'POST',
-                                body: JSON.stringify({ 
-                                    walletAddress: SessionManager.getWalletAddress(),
-                                    message 
-                                })
-                            });
-                    
-                            // Show AI response
-                            addMessage(response.message, 'ai-message');
-                        } catch (error) {
-                            addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
-                            console.error('AI Chat Error:', error);
-                        } finally {
-                            messageInput.disabled = false;
-                            sendButton.disabled = false;
-                            messageInput.focus();
-                        }
-                    };
-    
-                    // Send on button click
-                    sendButton.addEventListener('click', sendMessage);
-    
-                    // Send on Enter key
-                    messageInput.addEventListener('keypress', (e) => {
-                        if (e.key === 'Enter') {
-                            e.preventDefault();
-                            sendMessage();
-                        }
-                    });
-                }, 100);
                 break;
             case 'market':
                 moduleTitle = 'Crypto Market';
@@ -340,9 +272,76 @@ class ModuleHandler {
             });
         }
 
+        // Setup AI chat if it's an AI module
+        if (type === 'ai') {
+            this.setupAIChat(module);
+        }
+
         this.setupModuleDragging(module);
         this.saveModuleState();
         return module;
+    }
+
+    setupAIChat(module) {
+        const messagesContainer = module.querySelector('.ai-messages');
+        const messageInput = module.querySelector('.ai-message-input');
+        const sendButton = module.querySelector('.ai-send-btn');
+
+        const addMessage = (message, sender) => {
+            const messageEl = document.createElement('div');
+            messageEl.classList.add('ai-message', sender);
+            messageEl.textContent = message;
+            messagesContainer.appendChild(messageEl);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        };
+
+        const sendMessage = async () => {
+            const message = messageInput.value.trim();
+            if (!message) return;
+        
+            // Show user message
+            addMessage(message, 'user-message');
+            messageInput.value = '';
+        
+            try {
+                // Prevent dragging during API call
+                module.classList.remove('dragging');
+        
+                // Disable input during request
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+        
+                // Send message to backend
+                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        walletAddress: SessionManager.getWalletAddress(),
+                        message 
+                    })
+                });
+        
+                // Show AI response
+                addMessage(response.message, 'ai-message');
+            } catch (error) {
+                addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
+                console.error('AI Chat Error:', error);
+            } finally {
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        };
+
+        // Send on button click
+        sendButton.addEventListener('click', sendMessage);
+
+        // Send on Enter key
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
     }
 
     async setTheme(theme) {
@@ -435,14 +434,17 @@ class ModuleHandler {
     }
 }
 
-// Global initialization with persistence
+// Initialize singleton instance
+ModuleHandler.instance = null;
+
+// Global initialization function
 window.initializeModuleHandler = () => {
-    // Ensure only one module handler exists
-    if (window.moduleHandlerInstance) {
-        window.moduleHandlerInstance.destroy();
+    if (!window.moduleHandlerInstance) {
+        window.moduleHandlerInstance = new ModuleHandler();
     }
-    window.moduleHandlerInstance = new ModuleHandler();
+    return window.moduleHandlerInstance;
 };
+
 
 // Additional styles for modules
 const additionalStyles = `
@@ -474,8 +476,7 @@ const styleSheet = document.createElement('style');
 styleSheet.textContent = additionalStyles;
 document.head.appendChild(styleSheet);
 
-
-// Initialize module handler as early as possible
+// Initialize module handler when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
     // Destroy any existing global module handler
     if (window.moduleHandlerInstance) {
