@@ -46,6 +46,9 @@ class ModuleHandler {
     initializeModuleSystem() {
         console.log('Initializing Module System');
         
+        // Ensure module container exists on all pages
+        this.ensureModuleContainer();
+        
         // Find essential elements
         this.addButton = document.getElementById('addModuleButton');
         this.modal = document.getElementById('moduleModal');
@@ -58,7 +61,7 @@ class ModuleHandler {
                 modal: !!this.modal,
                 container: !!this.container
             });
-            return;
+            this.createMissingElements();
         }
 
         // Clear existing listeners by cloning and replacing
@@ -349,7 +352,8 @@ class ModuleHandler {
         let initialX = 0;
         let initialY = 0;
         let isDragging = false;
-        let lastTap = 0; // For double-tap detection
+        let lastTap = 0;
+        let dragStartTime = 0;
 
         const getEventPosition = (e) => {
             if (e.touches && e.touches.length > 0) {
@@ -365,29 +369,33 @@ class ModuleHandler {
         };
 
         const handleStart = (e) => {
-            if (e.target.classList.contains('module-close')) return;
+            // Prevent dragging if clicking on close button or input
+            if (e.target.closest('.module-close') || 
+                e.target.tagName === 'INPUT' || 
+                e.target.tagName === 'TEXTAREA') {
+                return;
+            }
 
             const position = getEventPosition(e);
             const rect = module.getBoundingClientRect();
             initialX = position.clientX - rect.left;
             initialY = position.clientY - rect.top;
 
-            if (e.target === module || module.contains(e.target)) {
-                // Handle double-tap for mobile
-                if (e.type === 'touchstart') {
-                    const currentTime = new Date().getTime();
-                    const tapLength = currentTime - lastTap;
-                    if (tapLength < 300 && tapLength > 0) {
-                        // Double tap detected
-                        this.toggleModuleSize(module);
-                        e.preventDefault();
-                        return;
-                    }
-                    lastTap = currentTime;
-                }
+            dragStartTime = Date.now();
+            isDragging = true;
+            module.classList.add('dragging');
 
-                isDragging = true;
-                module.classList.add('dragging');
+            // Handle double-tap for mobile
+            if (e.type === 'touchstart') {
+                const currentTime = new Date().getTime();
+                const tapLength = currentTime - lastTap;
+                if (tapLength < 300 && tapLength > 0) {
+                    // Double tap detected
+                    this.toggleModuleSize(module);
+                    e.preventDefault();
+                    return;
+                }
+                lastTap = currentTime;
             }
         };
 
@@ -408,32 +416,34 @@ class ModuleHandler {
             currentX = Math.max(10, Math.min(currentX, maxWidth - 10));
             currentY = Math.max(10, Math.min(currentY, maxHeight - 10));
 
-            module.style.transform = `translate(${currentX}px, ${currentY}px)`;
+            // Use translate3d for better performance
+            module.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
         };
 
         const handleEnd = () => {
+            if (!isDragging) return;
+
             initialX = currentX;
             initialY = currentY;
             isDragging = false;
             module.classList.remove('dragging');
-            this.saveModuleState();
+            
+            // Only save if it was a genuine drag (not a quick tap)
+            if (Date.now() - dragStartTime > 100) {
+                this.saveModuleState();
+            }
         };
 
-        // Mouse events
-        module.addEventListener('mousedown', handleStart);
-        document.addEventListener('mousemove', handleMove);
-        document.addEventListener('mouseup', handleEnd);
+        // Use pointer events for better cross-device support
+        module.addEventListener('pointerdown', handleStart, { passive: false });
+        document.addEventListener('pointermove', handleMove, { passive: false });
+        document.addEventListener('pointerup', handleEnd);
+        document.addEventListener('pointercancel', handleEnd);
 
-        // Touch events
-        module.addEventListener('touchstart', handleStart, { passive: false });
-        document.addEventListener('touchmove', handleMove, { passive: false });
-        document.addEventListener('touchend', handleEnd);
-        
-        // Prevent default touch behavior to avoid scrolling while dragging
-        module.addEventListener('touchmove', (e) => {
-            if (isDragging) {
-                e.preventDefault();
-            }
+        // Prevent default touch behaviors
+        module.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.module-close')) return;
+            e.preventDefault();
         }, { passive: false });
     }
 
@@ -517,8 +527,9 @@ class ModuleHandler {
         .module {
             max-width: 95vw;
             max-height: 80vh;
-            width: 300px; /* Reduced desktop width */
+            width: 350px; /* Slightly wider desktop modules */
             transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
+            will-change: transform; /* Hint to browser for performance */
         }
         
         @media (max-width: 768px) {
@@ -534,52 +545,35 @@ class ModuleHandler {
                 z-index: 1002;
             }
         
-            .module-content {
-                max-height: calc(80vh - 60px);
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-        
-            .ai-chat-container {
-                height: 300px; /* Reduced height for mobile AI chat */
-            }
-        
-            .ai-messages {
-                max-height: calc(300px - 100px); /* Adjusted to match container height */
-            }
-        
             .add-module-btn {
                 bottom: 30px;
-                right: 30px; /* Changed from left to right */
-                left: auto; /* Remove left positioning */
+                right: 30px;
+                left: auto;
                 width: 60px;
                 height: 60px;
             }
         
             .module-modal {
                 bottom: 100px;
-                right: 30px; /* Align with the add module button */
-                left: auto; /* Remove left positioning */
+                right: 30px;
+                left: auto;
                 max-height: 60vh;
                 overflow-y: auto;
             }
         }
-        
-        .module-option span {
-            margin-right: 10px;
-        }
         `;
-
+        
         // Add the styles to the document
         const styleSheet = document.createElement('style');
         styleSheet.textContent = additionalStyles;
         document.head.appendChild(styleSheet);
-
-        // Initialize module handler when DOM is loaded
-        document.addEventListener('DOMContentLoaded', async () => {
+        
+        // Rest of the code remains the same...
+        
+        // Initialize module handler
+        document.addEventListener('DOMContentLoaded', () => {
             if (window.moduleHandlerInstance) {
                 window.moduleHandlerInstance.destroy();
             }
             window.moduleHandlerInstance = new ModuleHandler();
-            await window.moduleHandlerInstance.initializeTheme();
         });
