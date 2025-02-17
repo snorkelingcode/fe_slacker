@@ -922,13 +922,13 @@ class MusicModule {
 
     async fetchMusicData() {
         try {
-            // These API calls will depend on your backend implementation
-            // const likedResponse = await makeApiCall(API_ENDPOINTS.music.liked);
-            // const recentResponse = await makeApiCall(API_ENDPOINTS.music.recent);
-            
-            // For now, we'll use empty arrays
-            this.likedSongs = [];
-            this.recentUploads = [];
+            // Fetch recent uploads
+            const recentResponse = await fetch(`/api/tracks/recent`);
+            this.recentUploads = await recentResponse.json();
+    
+            // Fetch user's liked tracks
+            const likedResponse = await fetch(`/api/tracks/liked/${walletAddress}`);
+            this.likedSongs = await likedResponse.json();
             
             this.renderSongLists();
         } catch (error) {
@@ -939,21 +939,22 @@ class MusicModule {
 
     async uploadMusic(file) {
         try {
-            // Use MediaHandler for file upload
-            const mediaUrl = await MediaHandler.uploadFile(file, 'music');
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('walletAddress', walletAddress);
+            formData.append('title', file.name);
             
-            // Prepare song data
-            const songData = {
-                title: file.name,
-                url: mediaUrl,
-                uploadedAt: new Date().toISOString()
-            };
-
+            const response = await fetch('/api/tracks/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const track = await response.json();
+            
             // Add to recent uploads
-            this.recentUploads.unshift(songData);
+            this.recentUploads.unshift(track);
             this.renderSongLists();
             
-            // Show success message
             ErrorHandler.showSuccess('Music uploaded successfully!', this.moduleElement);
         } catch (error) {
             console.error('Music upload error:', error);
@@ -1022,24 +1023,25 @@ class MusicModule {
         const index = trackItem.dataset.index;
         const likeBtn = trackItem.querySelector('.like-track-btn');
         const songs = type === 'liked' ? this.likedSongs : this.recentUploads;
-        const song = songs[index];
-
-        // Toggle like button style
-        likeBtn.classList.toggle('liked');
-
-        // Add or remove from liked songs
-        if (likeBtn.classList.contains('liked')) {
-            this.likedSongs.push(song);
-        } else {
-            this.likedSongs = this.likedSongs.filter(s => s !== song);
-        }
-
-        // Re-render lists
-        this.renderSongLists();
-    }
-
-    showErrorMessage(message) {
-        ErrorHandler.showError(message, this.moduleElement);
+        const track = songs[index];
+    
+        fetch(`/api/tracks/${track.id}/like`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ walletAddress })
+        })
+        .then(response => response.json())
+        .then(updatedTrack => {
+            // Update local state based on server response
+            likeBtn.classList.toggle('liked');
+            this.renderSongLists();
+        })
+        .catch(error => {
+            console.error('Error liking track:', error);
+            ErrorHandler.showError('Failed to like track', this.moduleElement);
+        });
     }
 }
 
