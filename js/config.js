@@ -3,7 +3,8 @@ const API_BASE_URL = '/api/';
 const API_ENDPOINTS = {
     posts: `${API_BASE_URL}posts`,
     users: `${API_BASE_URL}users`,
-    comments: (postId) => `${API_BASE_URL}posts/${postId}/comments`,
+    comments: `${API_BASE_URL}comments`,
+    notifications: `${API_BASE_URL}notifications`,
     aiChat: `${API_BASE_URL}ai/chat`,
     upload: `${API_BASE_URL}upload`,
     modules: `${API_BASE_URL}users/modules`
