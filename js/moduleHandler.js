@@ -628,7 +628,7 @@ const additionalStyles = `
 
     .module-modal {
         bottom: 100px;
-        left: 30px; /* Changed from right to left */
+        left: 900px; /* Changed from right to left */
         right: auto !important;
         max-height: 60vh;
         overflow-y: auto;
