@@ -627,6 +627,7 @@ const additionalStyles = `
     transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
     will-change: transform;
     user-select: none;
+    pointer-events: auto;
 }
 @media (max-width: 768px) {
     body {
