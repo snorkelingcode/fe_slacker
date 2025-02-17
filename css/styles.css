@@ -78,6 +78,10 @@ main {
     main {
         padding: 70px 10px 10px;
     }
+    .add-module-btn {
+        left: 30px;
+        right: auto;
+    }
 }
 
 /* Sign Out Button */
@@ -1007,6 +1011,7 @@ video.post-media {
     gap: 8px;
     z-index: 1001;
     width: 200px;
+    right: 30px;
 }
 
 .module-modal.active {
