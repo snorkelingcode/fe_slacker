@@ -620,15 +620,25 @@ window.initializeModuleHandler = () => {
 
 // Additional styles to support the changes
 const additionalStyles = `
+.module {
+    max-width: 95vw;
+    max-height: 80vh;
+    width: 350px; /* Desktop width */
+    transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
+    will-change: transform;
+    user-select: none;
+}
+
 @media (max-width: 768px) {
-    body {
-        overflow-y: auto;
-        position: static;
+    .module {
+        width: 85vw; /* Mobile width */
+        height: auto;
+        min-height: 200px;
     }
 
     .module-modal {
         bottom: 100px;
-        left: 230px; /* Changed from right to left */
+        left: 30px;
         right: auto !important;
         max-height: 60vh;
         overflow-y: auto;
