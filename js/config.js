@@ -8,7 +8,10 @@ const API_ENDPOINTS = {
     aiChat: `${API_BASE_URL}ai/chat`,
     upload: `${API_BASE_URL}upload`,
     modules: `${API_BASE_URL}users/modules`,
-    crypto: `${API_BASE_URL}crypto`
+    crypto: {
+        top: `${API_BASE_URL}crypto/top`,
+        price: `${API_BASE_URL}crypto/price`
+    }
 };
 
 const DEFAULT_FETCH_OPTIONS = {
