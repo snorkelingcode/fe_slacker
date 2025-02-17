@@ -96,6 +96,103 @@ class ModuleHandler {
         this.loadSavedModules();
     }
 
+    // New method to ensure module container exists
+    ensureModuleContainer() {
+        // Check if module container exists on the current page
+        let moduleContainer = document.getElementById('moduleContainer');
+        if (!moduleContainer) {
+            // Create module container if it doesn't exist
+            moduleContainer = document.createElement('div');
+            moduleContainer.id = 'moduleContainer';
+            moduleContainer.className = 'module-container';
+            
+            // Append to main or body
+            const mainContent = document.querySelector('main') || document.body;
+            mainContent.appendChild(moduleContainer);
+        }
+
+        // Ensure add module button exists
+        let addModuleButton = document.getElementById('addModuleButton');
+        if (!addModuleButton) {
+            addModuleButton = document.createElement('button');
+            addModuleButton.id = 'addModuleButton';
+            addModuleButton.className = 'add-module-btn';
+            addModuleButton.innerHTML = '<span>+</span>';
+            document.body.appendChild(addModuleButton);
+        }
+
+        // Ensure module modal exists
+        let moduleModal = document.getElementById('moduleModal');
+        if (!moduleModal) {
+            moduleModal = document.createElement('div');
+            moduleModal.id = 'moduleModal';
+            moduleModal.className = 'module-modal';
+            moduleModal.innerHTML = `
+                <button class="module-option" data-type="music">
+                    <span>🎵</span> Music
+                </button>
+                <button class="module-option" data-type="ai">
+                    <span>🤖</span> AI
+                </button>
+                <button class="module-option" data-type="market">
+                    <span>📈</span> Market
+                </button>
+                <button class="module-option" data-type="settings">
+                    <span>⚙️</span> Settings
+                </button>
+            `;
+            document.body.appendChild(moduleModal);
+        }
+    }
+
+    createMissingElements() {
+        // If any core elements are missing, recreate them
+        if (!this.container) {
+            this.container = document.createElement('div');
+            this.container.id = 'moduleContainer';
+            this.container.className = 'module-container';
+            document.body.appendChild(this.container);
+        }
+
+        if (!this.addButton) {
+            this.addButton = document.createElement('button');
+            this.addButton.id = 'addModuleButton';
+            this.addButton.className = 'add-module-btn';
+            this.addButton.innerHTML = '<span>+</span>';
+            document.body.appendChild(this.addButton);
+        }
+
+        if (!this.modal) {
+            this.modal = document.createElement('div');
+            this.modal.id = 'moduleModal';
+            this.modal.className = 'module-modal';
+            this.modal.innerHTML = `
+                <button class="module-option" data-type="music">
+                    <span>🎵</span> Music
+                </button>
+                <button class="module-option" data-type="ai">
+                    <span>🤖</span> AI
+                </button>
+                <button class="module-option" data-type="market">
+                    <span>📈</span> Market
+                </button>
+                <button class="module-option" data-type="settings">
+                    <span>⚙️</span> Settings
+                </button>
+            `;
+            document.body.appendChild(this.modal);
+        }
+    }
+
+    handleAddButtonClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (this.modal) {
+            this.modal.classList.toggle('active');
+        }
+    }
+
     createModuleHandler(e) {
         const moduleType = e.currentTarget.dataset.type;
         
@@ -114,15 +211,6 @@ class ModuleHandler {
         // If no module exists, create a new one
         this.createModule(moduleType);
         this.modal.classList.remove('active');
-    }
-
-    handleAddButtonClick(e) {
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (this.modal) {
-            this.modal.classList.toggle('active');
-        }
     }
 
     saveModuleState() {
@@ -160,22 +248,6 @@ class ModuleHandler {
         }
     }
 
-    async initializeTheme() {
-        try {
-            const walletAddress = SessionManager.getWalletAddress();
-            if (walletAddress) {
-                const response = await makeApiCall(`${API_ENDPOINTS.users}/profile/${walletAddress}`);
-                if (response && response.theme) {
-                    this.currentTheme = response.theme;
-                    localStorage.setItem('theme', response.theme);
-                    this.applyTheme(response.theme);
-                }
-            }
-        } catch (error) {
-            console.error('Error loading user theme:', error);
-        }
-    }
-
     createModule(type, position = null, id = null) {
         const moduleId = id || `module-${Date.now()}`;
         
@@ -191,7 +263,7 @@ class ModuleHandler {
 
         // Set position with mobile-aware positioning
         if (position) {
-            module.style.transform = `translate(${position.x}px, ${position.y}px)`;
+            module.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
         } else {
             // More conservative initial positioning for mobile
             const isMobile = window.innerWidth <= 768;
@@ -199,7 +271,7 @@ class ModuleHandler {
             const maxHeight = isMobile ? window.innerHeight - 100 : window.innerHeight - 200;
             const initialX = Math.min(Math.random() * maxWidth, maxWidth - 20);
             const initialY = Math.min(Math.random() * maxHeight, maxHeight - 20);
-            module.style.transform = `translate(${initialX}px, ${initialY}px)`;
+            module.style.transform = `translate3d(${initialX}px, ${initialY}px, 0)`;
         }
 
         let content = '';
@@ -291,59 +363,6 @@ class ModuleHandler {
         this.setupModuleDragging(module);
         this.saveModuleState();
         return module;
-    }
-
-    setupAIChat(module) {
-        const messagesContainer = module.querySelector('.ai-messages');
-        const messageInput = module.querySelector('.ai-message-input');
-        const sendButton = module.querySelector('.ai-send-btn');
-
-        const addMessage = (message, sender) => {
-            const messageEl = document.createElement('div');
-            messageEl.classList.add('ai-message', sender);
-            messageEl.textContent = message;
-            messagesContainer.appendChild(messageEl);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        };
-
-        const sendMessage = async () => {
-            const message = messageInput.value.trim();
-            if (!message) return;
-        
-            addMessage(message, 'user-message');
-            messageInput.value = '';
-        
-            try {
-                module.classList.remove('dragging');
-                messageInput.disabled = true;
-                sendButton.disabled = true;
-        
-                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
-                    method: 'POST',
-                    body: JSON.stringify({ 
-                        walletAddress: SessionManager.getWalletAddress(),
-                        message 
-                    })
-                });
-        
-                addMessage(response.message, 'ai-message');
-            } catch (error) {
-                addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
-                console.error('AI Chat Error:', error);
-            } finally {
-                messageInput.disabled = false;
-                sendButton.disabled = false;
-                messageInput.focus();
-            }
-        };
-
-        sendButton.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
     }
 
     setupModuleDragging(module) {
@@ -447,6 +466,59 @@ class ModuleHandler {
         }, { passive: false });
     }
 
+    setupAIChat(module) {
+        const messagesContainer = module.querySelector('.ai-messages');
+        const messageInput = module.querySelector('.ai-message-input');
+        const sendButton = module.querySelector('.ai-send-btn');
+
+        const addMessage = (message, sender) => {
+            const messageEl = document.createElement('div');
+            messageEl.classList.add('ai-message', sender);
+            messageEl.textContent = message;
+            messagesContainer.appendChild(messageEl);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        };
+
+        const sendMessage = async () => {
+            const message = messageInput.value.trim();
+            if (!message) return;
+        
+            addMessage(message, 'user-message');
+            messageInput.value = '';
+        
+            try {
+                module.classList.remove('dragging');
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+        
+                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        walletAddress: SessionManager.getWalletAddress(),
+                        message 
+                    })
+                });
+        
+                addMessage(response.message, 'ai-message');
+            } catch (error) {
+                addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
+                console.error('AI Chat Error:', error);
+            } finally {
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+                messageInput.focus();
+            }
+        };
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+
     toggleModuleSize(module) {
         const isMobile = window.innerWidth <= 768;
         if (!isMobile) return; // Only toggle on mobile
@@ -466,7 +538,7 @@ class ModuleHandler {
             const rect = module.getBoundingClientRect();
             const centerX = (window.innerWidth - rect.width) / 2;
             const centerY = (window.innerHeight - rect.height) / 2;
-            module.style.transform = `translate(${centerX}px, ${centerY}px)`;
+            module.style.transform = `translate3d(${centerX}px, ${centerY}px, 0)`;
         }
         
         this.saveModuleState();
@@ -511,69 +583,80 @@ class ModuleHandler {
     }
 }
 
-        // Initialize singleton instance
-        ModuleHandler.instance = null;
+// Initialize singleton instance
+ModuleHandler.instance = null;
 
-        // Global initialization function
-        window.initializeModuleHandler = () => {
-            if (!window.moduleHandlerInstance) {
-                window.moduleHandlerInstance = new ModuleHandler();
-            }
-            return window.moduleHandlerInstance;
-        };
+// Global initialization function
+window.initializeModuleHandler = () => {
+    if (!window.moduleHandlerInstance) {
+        window.moduleHandlerInstance = new ModuleHandler();
+    }
+    return window.moduleHandlerInstance;
+};
 
-        // Additional styles for mobile responsiveness
-        const additionalStyles = `
-        .module {
-            max-width: 95vw;
-            max-height: 80vh;
-            width: 350px; /* Slightly wider desktop modules */
-            transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
-            will-change: transform; /* Hint to browser for performance */
+// Additional styles to support the changes
+const additionalStyles = `
+.module {
+    max-width: 95vw;
+    max-height: 80vh;
+    width: 350px; /* Slightly wider desktop modules */
+    transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
+    will-change: transform; /* Hint to browser for performance */
+}
+
+@media (max-width: 768px) {
+    .module {
+        width: 85vw;
+        height: auto;
+        min-height: 200px;
+    }
+
+    .module-expanded {
+        width: 95vw !important;
+        height: 80vh !important;
+        z-index: 1002;
+    }
+
+    .add-module-btn {
+        bottom: 30px;
+        right: 30px;
+        left: auto;
+        width: 60px;
+        height: 60px;
+    }
+
+    .module-modal {
+        bottom: 100px;
+        right: 30px;
+        left: auto;
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+}
+
+.module-option span {
+    margin-right: 10px;
+}
+`;
+
+// Add the styles to the document
+const styleSheet = document.createElement('style');
+styleSheet.textContent = additionalStyles;
+document.head.appendChild(styleSheet);
+
+// Initialize module handler
+document.addEventListener('DOMContentLoaded', async () => {
+    if (window.moduleHandlerInstance) {
+        window.moduleHandlerInstance.destroy();
+    }
+    window.moduleHandlerInstance = new ModuleHandler();
+    
+    // Try to initialize theme
+    try {
+        if (window.moduleHandlerInstance.initializeTheme) {
+            await window.moduleHandlerInstance.initializeTheme();
         }
-        
-        @media (max-width: 768px) {
-            .module {
-                width: 85vw;
-                height: auto;
-                min-height: 200px;
-            }
-        
-            .module-expanded {
-                width: 95vw !important;
-                height: 80vh !important;
-                z-index: 1002;
-            }
-        
-            .add-module-btn {
-                bottom: 30px;
-                right: 30px;
-                left: auto;
-                width: 60px;
-                height: 60px;
-            }
-        
-            .module-modal {
-                bottom: 100px;
-                right: 30px;
-                left: auto;
-                max-height: 60vh;
-                overflow-y: auto;
-            }
-        }
-        `;
-        
-        // Add the styles to the document
-        const styleSheet = document.createElement('style');
-        styleSheet.textContent = additionalStyles;
-        document.head.appendChild(styleSheet);
-        
-        // Rest of the code remains the same...
-        
-        // Initialize module handler
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.moduleHandlerInstance) {
-                window.moduleHandlerInstance.destroy();
-            }
-            window.moduleHandlerInstance = new ModuleHandler();
-        });
+    } catch (error) {
+        console.error('Error initializing theme:', error);
+    }
+});
