@@ -687,45 +687,50 @@ document.addEventListener('DOMContentLoaded', async () => {
 class ReployAIChat {
     constructor() {
         this.messages = [];
-        this.maxContextLength = 10; // Limit message history
+        this.maxContextLength = 10;
     }
 
     async sendMessage(userMessage) {
-        // Add user message to context
-        this.messages.push({
-            role: 'user', 
-            content: userMessage
-        });
-
-        // Trim message history if too long
-        if (this.messages.length > this.maxContextLength) {
-            this.messages = this.messages.slice(-this.maxContextLength);
-        }
+        // Prepare messages including system context
+        const messagePayload = [
+            { 
+                role: 'system', 
+                content: 'You are a helpful AI assistant for a social media platform called Slacker. Keep responses concise and engaging.'
+            },
+            ...this.messages,
+            {
+                role: 'user', 
+                content: userMessage
+            }
+        ];
 
         try {
+            console.log('Sending AI Chat Request:', messagePayload); // Add logging
+
             const response = await makeApiCall(API_ENDPOINTS.aiChat, {
                 method: 'POST',
                 body: JSON.stringify({ 
                     walletAddress: SessionManager.getWalletAddress(),
-                    messages: [
-                        { 
-                            role: 'system', 
-                            content: 'You are a helpful AI assistant for a social media platform called Slacker. Keep responses concise and engaging.'
-                        },
-                        ...this.messages
-                    ]
+                    messages: messagePayload
                 })
             });
 
-            // Add AI response to context
-            this.messages.push({
-                role: 'assistant', 
-                content: response.message
-            });
+            console.log('AI Chat Response:', response); // Add logging
+
+            // Add messages to context
+            this.messages.push(
+                { role: 'user', content: userMessage },
+                { role: 'assistant', content: response.message }
+            );
+
+            // Trim context if too long
+            if (this.messages.length > this.maxContextLength * 2) {
+                this.messages = this.messages.slice(-this.maxContextLength * 2);
+            }
 
             return response.message;
         } catch (error) {
-            console.error('Reploy AI Error:', error);
+            console.error('Frontend AI Chat Error:', error);
             return 'Sorry, I couldn\'t process your request at the moment.';
         }
     }
