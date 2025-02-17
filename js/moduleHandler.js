@@ -392,6 +392,7 @@ class ModuleHandler {
         let initialX = 0;
         let initialY = 0;
         let isDragging = false;
+        let dragThreshold = 10; // Pixel threshold to start dragging
         
         const getTransform = () => {
             const transform = window.getComputedStyle(module).transform;
@@ -415,9 +416,6 @@ class ModuleHandler {
                 return;
             }
     
-            // Prevent default to stop text selection
-            e.preventDefault();
-    
             // Get initial positions
             const { clientX, clientY } = e;
             const { x, y } = getTransform();
@@ -427,55 +425,52 @@ class ModuleHandler {
             initialX = x;
             initialY = y;
     
-            isDragging = true;
-            module.classList.add('dragging');
+            isDragging = false; // Only set to true after threshold
     
             // Capture pointer for smooth dragging
             module.setPointerCapture(e.pointerId);
         };
     
         const handleMove = (e) => {
-            if (!isDragging) return;
-    
-            e.preventDefault();
-    
             const { clientX, clientY } = e;
             
-            // Calculate delta
-            const deltaX = clientX - startX;
-            const deltaY = clientY - startY;
+            // Calculate distance moved
+            const deltaX = Math.abs(clientX - startX);
+            const deltaY = Math.abs(clientY - startY);
     
-            // New position
-            const newX = initialX + deltaX;
-            const newY = initialY + deltaY;
+            // Start dragging only after threshold
+            if (!isDragging && (deltaX > dragThreshold || deltaY > dragThreshold)) {
+                isDragging = true;
+                module.classList.add('dragging');
+            }
+    
+            if (!isDragging) return;
+    
+            // Calculate new position
+            const newX = initialX + (clientX - startX);
+            const newY = initialY + (clientY - startY);
     
             // Apply transform
             module.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
         };
     
         const handleEnd = (e) => {
-            if (!isDragging) return;
-    
             // Release pointer capture
             module.releasePointerCapture(e.pointerId);
     
-            isDragging = false;
-            module.classList.remove('dragging');
-            
-            // Save module state
-            this.saveModuleState();
+            if (isDragging) {
+                isDragging = false;
+                module.classList.remove('dragging');
+                
+                // Save module state
+                this.saveModuleState();
+            }
         };
     
         // Pointer events for smooth dragging
         module.addEventListener('pointerdown', handleStart);
         document.addEventListener('pointermove', handleMove);
         document.addEventListener('pointerup', handleEnd);
-
-        // Prevent default touch behaviors
-        module.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.module-close')) return;
-            e.preventDefault();
-        }, { passive: false });
     }
 
     setupAIChat(module) {
