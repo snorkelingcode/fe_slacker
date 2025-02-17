@@ -1037,7 +1037,7 @@ video.post-media {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 15px;
     position: absolute;
-    width: 500px;
+    width: 200px;
     cursor: move;
     z-index: 1000;
     user-select: none;
