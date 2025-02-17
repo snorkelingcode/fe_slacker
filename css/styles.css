@@ -1011,7 +1011,6 @@ video.post-media {
     gap: 8px;
     z-index: 1001;
     width: 200px;
-    right: 30px;
 }
 
 .module-modal.active {
