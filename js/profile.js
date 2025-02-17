@@ -354,20 +354,23 @@ class WalletConnector {
         profilePictureInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-    
+        
             try {
                 LoadingState.show(profilePicturePreview);
                 
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('walletAddress', this.account);
-    
-                const response = await fetch(`${API_ENDPOINTS.users}/profile/picture`, {
+        
+                const response = await fetch(`${API_ENDPOINTS.upload}/profile`, {  // Changed this line
                     method: 'POST',
                     body: formData
                 });
-    
-                if (!response.ok) throw new Error('Failed to upload profile picture');
+        
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to upload profile picture');
+                }
                 
                 const data = await response.json();
                 profilePicturePreview.style.backgroundImage = `url('${data.url}')`;
@@ -387,20 +390,23 @@ class WalletConnector {
         bannerInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-    
+        
             try {
                 LoadingState.show(bannerPreview);
                 
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('walletAddress', this.account);
-    
-                const response = await fetch(`${API_ENDPOINTS.users}/profile/banner`, {
+        
+                const response = await fetch(`${API_ENDPOINTS.upload}/banner`, {  // Changed this line
                     method: 'POST',
                     body: formData
                 });
-    
-                if (!response.ok) throw new Error('Failed to upload banner');
+        
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Failed to upload banner');
+                }
                 
                 const data = await response.json();
                 bannerPreview.style.backgroundImage = `url('${data.url}')`;
