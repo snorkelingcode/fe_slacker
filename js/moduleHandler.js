@@ -330,9 +330,29 @@ class ModuleHandler {
                                     <input type="file" class="music-upload-input" accept="audio/*" hidden>
                                     <button class="music-upload-btn">Upload</button>
                                 </div>
+                                <div class="music-view-selector">
+                                    <button class="view-liked-btn active">Liked Songs</button>
+                                    <button class="view-recent-btn">Recent Uploads</button>
+                                </div>
                             </div>
                 
-                            <div class="music-player-container">
+                            <div class="music-lists">
+                                <div class="liked-songs active">
+                                    <h4>Liked Songs</h4>
+                                    <div class="songs-list empty-list">
+                                        No liked songs yet
+                                    </div>
+                                </div>
+                                
+                                <div class="recent-uploads">
+                                    <h4>Recent Uploads</h4>
+                                    <div class="songs-list empty-list">
+                                        No recent uploads yet
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <div class="music-player-container" style="display: none;">
                                 <div class="current-track-info">
                                     <span class="track-title">No track selected</span>
                                     <span class="track-artist">-</span>
@@ -353,18 +373,6 @@ class ModuleHandler {
                                     </div>
                                 </div>
                             </div>
-                
-                            <div class="music-lists">
-                                <div class="recent-uploads">
-                                    <h4>Recent Uploads</h4>
-                                    <ul class="recent-uploads-list"></ul>
-                                </div>
-                                
-                                <div class="liked-songs">
-                                    <h4>Liked Songs</h4>
-                                    <ul class="liked-songs-list"></ul>
-                                </div>
-                            </div>
                         </div>
                     `;
                     
@@ -373,7 +381,6 @@ class ModuleHandler {
                         const musicModule = new MusicModule(module);
                     }, 0);
                     break;
-            // In moduleHandler.js, in the createModule function, update the 'ai' case:
             case 'ai':
                 moduleTitle = 'AI Chat';
                 content = `
@@ -856,3 +863,187 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error initializing theme:', error);
     }
 });
+
+class MusicModule {
+    constructor(moduleElement) {
+        this.moduleElement = moduleElement;
+        this.likedSongs = [];
+        this.recentUploads = [];
+        
+        this.initializeElements();
+        this.setupEventListeners();
+        this.fetchMusicData();
+    }
+
+    initializeElements() {
+        this.uploadInput = this.moduleElement.querySelector('.music-upload-input');
+        this.uploadBtn = this.moduleElement.querySelector('.music-upload-btn');
+        this.searchInput = this.moduleElement.querySelector('.music-search-input');
+        
+        this.likedSongsContainer = this.moduleElement.querySelector('.liked-songs');
+        this.recentUploadsContainer = this.moduleElement.querySelector('.recent-uploads');
+        
+        this.viewLikedBtn = this.moduleElement.querySelector('.view-liked-btn');
+        this.viewRecentBtn = this.moduleElement.querySelector('.view-recent-btn');
+        
+        this.playerContainer = this.moduleElement.querySelector('.music-player-container');
+        this.audioPlayer = this.moduleElement.querySelector('.music-audio-player');
+        this.trackTitle = this.moduleElement.querySelector('.track-title');
+        this.trackArtist = this.moduleElement.querySelector('.track-artist');
+    }
+
+    setupEventListeners() {
+        // Upload button click to trigger file input
+        this.uploadBtn.addEventListener('click', () => {
+            this.uploadInput.click();
+        });
+
+        // File upload handler
+        this.uploadInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                this.uploadMusic(file);
+            }
+        });
+
+        // View selector buttons
+        this.viewLikedBtn.addEventListener('click', () => this.switchView('liked'));
+        this.viewRecentBtn.addEventListener('click', () => this.switchView('recent'));
+    }
+
+    switchView(viewType) {
+        // Toggle active classes for buttons and lists
+        this.viewLikedBtn.classList.toggle('active', viewType === 'liked');
+        this.viewRecentBtn.classList.toggle('active', viewType === 'recent');
+        
+        this.likedSongsContainer.classList.toggle('active', viewType === 'liked');
+        this.recentUploadsContainer.classList.toggle('active', viewType === 'recent');
+    }
+
+    async fetchMusicData() {
+        try {
+            // These API calls will depend on your backend implementation
+            // const likedResponse = await makeApiCall(API_ENDPOINTS.music.liked);
+            // const recentResponse = await makeApiCall(API_ENDPOINTS.music.recent);
+            
+            // For now, we'll use empty arrays
+            this.likedSongs = [];
+            this.recentUploads = [];
+            
+            this.renderSongLists();
+        } catch (error) {
+            console.error('Error fetching music data:', error);
+            this.showErrorMessage('Failed to load music library');
+        }
+    }
+
+    async uploadMusic(file) {
+        try {
+            // Use MediaHandler for file upload
+            const mediaUrl = await MediaHandler.uploadFile(file, 'music');
+            
+            // Prepare song data
+            const songData = {
+                title: file.name,
+                url: mediaUrl,
+                uploadedAt: new Date().toISOString()
+            };
+
+            // Add to recent uploads
+            this.recentUploads.unshift(songData);
+            this.renderSongLists();
+            
+            // Show success message
+            ErrorHandler.showSuccess('Music uploaded successfully!', this.moduleElement);
+        } catch (error) {
+            console.error('Music upload error:', error);
+            ErrorHandler.showError('Failed to upload music', this.moduleElement);
+        }
+    }
+
+    renderSongLists() {
+        this.renderSongList(this.likedSongsContainer, this.likedSongs, 'liked');
+        this.renderSongList(this.recentUploadsContainer, this.recentUploads, 'recent');
+    }
+
+    renderSongList(container, songs, type) {
+        const songsList = container.querySelector('.songs-list');
+        
+        if (songs.length === 0) {
+            songsList.innerHTML = `No ${type} songs yet`;
+            songsList.classList.add('empty-list');
+            return;
+        }
+
+        songsList.classList.remove('empty-list');
+        songsList.innerHTML = songs.map((song, index) => `
+            <div class="track-item" data-index="${index}" data-type="${type}">
+                <div class="track-details">
+                    <span class="track-title">${song.title}</span>
+                    <span class="track-artist">${song.artist || 'Unknown Artist'}</span>
+                </div>
+                <div class="track-actions">
+                    <button class="play-track-btn">▶️</button>
+                    <button class="like-track-btn">❤️</button>
+                </div>
+            </div>
+        `).join('');
+
+        // Add event listeners to track items
+        songsList.querySelectorAll('.track-item').forEach(item => {
+            const playBtn = item.querySelector('.play-track-btn');
+            const likeBtn = item.querySelector('.like-track-btn');
+
+            playBtn.addEventListener('click', () => this.playTrack(item));
+            likeBtn.addEventListener('click', () => this.toggleLike(item));
+        });
+    }
+
+    playTrack(trackItem) {
+        const type = trackItem.dataset.type;
+        const index = trackItem.dataset.index;
+        const songs = type === 'liked' ? this.likedSongs : this.recentUploads;
+        const song = songs[index];
+
+        // Show player container
+        this.playerContainer.style.display = 'block';
+
+        // Update track info
+        this.trackTitle.textContent = song.title;
+        this.trackArtist.textContent = song.artist || 'Unknown Artist';
+
+        // Set audio source and play
+        this.audioPlayer.src = song.url;
+        this.audioPlayer.play();
+    }
+
+    toggleLike(trackItem) {
+        const type = trackItem.dataset.type;
+        const index = trackItem.dataset.index;
+        const likeBtn = trackItem.querySelector('.like-track-btn');
+        const songs = type === 'liked' ? this.likedSongs : this.recentUploads;
+        const song = songs[index];
+
+        // Toggle like button style
+        likeBtn.classList.toggle('liked');
+
+        // Add or remove from liked songs
+        if (likeBtn.classList.contains('liked')) {
+            this.likedSongs.push(song);
+        } else {
+            this.likedSongs = this.likedSongs.filter(s => s !== song);
+        }
+
+        // Re-render lists
+        this.renderSongLists();
+    }
+
+    showErrorMessage(message) {
+        ErrorHandler.showError(message, this.moduleElement);
+    }
+}
+
+// Export the class if using modules, otherwise it will be global
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = MusicModule;
+}
