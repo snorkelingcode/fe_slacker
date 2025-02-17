@@ -321,7 +321,7 @@ class ModuleHandler {
                 break;
             case 'music':
                 moduleTitle = 'Music Player';
-                content = 'SoundCloud Widget Coming Soon';
+                content = 'Music Library Coming Soon';
                 break;
             case 'ai':
                 moduleTitle = 'AI Chat';
@@ -336,8 +336,8 @@ class ModuleHandler {
                 `;
                 break;
             case 'market':
-                moduleTitle = 'Crypto Market';
-                content = 'Crypto Prices Coming Soon';
+                moduleTitle = 'Markets';
+                content = 'Stock and Crypto Prices Coming Soon';
                 break;
             default:
                 moduleTitle = 'Module';
