@@ -1184,6 +1184,10 @@ body {
     color: var(--text-primary);
 }
 
+.comment-content {
+    color: var(--text-primary);
+}
+
 .module-content {
     border-color: var(--border-color);
     color: var(--text-secondary);
