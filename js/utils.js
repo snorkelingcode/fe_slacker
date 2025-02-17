@@ -108,13 +108,24 @@ class MediaHandler {
                     : `${this.UPLOAD_ENDPOINT}/${type}`,
                 {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        // Don't set Content-Type here, let the browser set it with the boundary
+                        'Accept': 'application/json'
+                    }
                 }
             );
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Upload failed');
+                const errorText = await response.text();
+                let errorMessage;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.message || 'Upload failed';
+                } catch (e) {
+                    errorMessage = errorText || 'Upload failed';
+                }
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();
@@ -137,8 +148,15 @@ class MediaHandler {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Profile image upload failed');
+                const errorText = await response.text();
+                let errorMessage;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.message || 'Profile image upload failed';
+                } catch (e) {
+                    errorMessage = errorText || 'Profile image upload failed';
+                }
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();
@@ -161,8 +179,15 @@ class MediaHandler {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.message || 'Banner image upload failed');
+                const errorText = await response.text();
+                let errorMessage;
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    errorMessage = errorJson.message || 'Banner image upload failed';
+                } catch (e) {
+                    errorMessage = errorText || 'Banner image upload failed';
+                }
+                throw new Error(errorMessage);
             }
 
             const result = await response.json();
