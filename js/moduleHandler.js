@@ -620,6 +620,14 @@ window.initializeModuleHandler = () => {
 
 // Additional styles to support the changes
 const additionalStyles = `
+.module {
+    max-width: 95vw;
+    max-height: 80vh;
+    width: 450px; /* Increased desktop width */
+    transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
+    will-change: transform;
+    user-select: none;
+}
 @media (max-width: 768px) {
     body {
         overflow-y: auto;
