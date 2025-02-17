@@ -387,96 +387,107 @@ class ModuleHandler {
     }
     
     setupModuleDragging(module) {
-        let startX = 0;
-        let startY = 0;
-        let initialX = 0;
-        let initialY = 0;
         let isDragging = false;
-        let dragThreshold = 10; // Pixel threshold to start dragging
-        
-        const getTransform = () => {
-            const transform = window.getComputedStyle(module).transform;
-            const matrix = new DOMMatrixReadOnly(transform);
-            return { x: matrix.e, y: matrix.f };
-        };
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
     
-        const handleStart = (e) => {
-            // Prevent dragging on interactive elements
-            const interactiveSelectors = [
-                '.module-close', 
-                'input', 
-                'textarea', 
-                'button', 
-                '.theme-option', 
-                '.ai-send-btn', 
-                '.ai-message-input'
-            ];
-            
+        const dragElement = module;
+    
+        // Prevent dragging on interactive elements
+        const interactiveSelectors = [
+            '.module-close', 
+            'input', 
+            'textarea', 
+            'button', 
+            '.theme-option', 
+            '.ai-send-btn', 
+            '.ai-message-input'
+        ];
+    
+        const dragStart = (e) => {
+            // Check if clicked on an interactive element
             if (interactiveSelectors.some(selector => e.target.closest(selector))) {
                 return;
             }
     
-            // Get initial positions
-            const { clientX, clientY } = e;
-            const { x, y } = getTransform();
+            // Get the initial mouse or touch position
+            initialX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+            initialY = e.type === 'mousedown' ? e.clientY : e.touches[0].clientY;
     
-            startX = clientX;
-            startY = clientY;
-            initialX = x;
-            initialY = y;
+            // Get current transform
+            const transformMatrix = window.getComputedStyle(dragElement).transform;
+            const matrix = new DOMMatrixReadOnly(transformMatrix);
+            
+            // Current position
+            xOffset = matrix.e;
+            yOffset = matrix.f;
     
-            isDragging = false; // Only set to true after threshold
+            // Start dragging
+            isDragging = true;
+            dragElement.classList.add('dragging');
     
-            // Capture pointer for smooth dragging
-            module.setPointerCapture(e.pointerId);
+            // Prevent default to stop text selection
+            e.preventDefault();
         };
     
-        const handleMove = (e) => {
-            const { clientX, clientY } = e;
-            
-            // Calculate distance moved
-            const deltaX = Math.abs(clientX - startX);
-            const deltaY = Math.abs(clientY - startY);
-    
-            // Start dragging only after threshold
-            if (!isDragging && (deltaX > dragThreshold || deltaY > dragThreshold)) {
-                isDragging = true;
-                module.classList.add('dragging');
-            }
-    
+        const drag = (e) => {
             if (!isDragging) return;
     
-            // Calculate new position
-            const newX = initialX + (clientX - startX);
-            const newY = initialY + (clientY - startY);
+            // Prevent default to stop scrolling
+            e.preventDefault();
+    
+            // Get current mouse or touch position
+            const clientX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+            const clientY = e.type === 'mousemove' ? e.clientY : e.touches[0].clientY;
+    
+            // Calculate the distance moved
+            currentX = clientX - initialX + xOffset;
+            currentY = clientY - initialY + yOffset;
+    
+            // Set the new position
+            setTranslate(currentX, currentY, dragElement);
+        };
+    
+        const dragEnd = () => {
+            // Reset initial positions
+            initialX = currentX;
+            initialY = currentY;
+    
+            // Stop dragging
+            isDragging = false;
+            dragElement.classList.remove('dragging');
+    
+            // Save module state
+            this.saveModuleState();
+        };
+    
+        const setTranslate = (xPos, yPos, el) => {
+            // Constrain movement within viewport
+            const isMobile = window.innerWidth <= 768;
+            const maxWidth = isMobile ? window.innerWidth - 20 : window.innerWidth - el.offsetWidth;
+            const maxHeight = window.innerHeight - el.offsetHeight;
+    
+            // Constrain X and Y
+            xPos = Math.max(0, Math.min(xPos, maxWidth));
+            yPos = Math.max(0, Math.min(yPos, maxHeight));
     
             // Apply transform
-            module.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
+            el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
         };
     
-        const handleEnd = (e) => {
-            // Release pointer capture
-            module.releasePointerCapture(e.pointerId);
+        // Mouse events
+        module.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
     
-            if (isDragging) {
-                isDragging = false;
-                module.classList.remove('dragging');
-                
-                // Save module state
-                this.saveModuleState();
-            }
-        };
-    
-        // Pointer events for smooth dragging
-        module.addEventListener('pointerdown', handleStart);
-        document.addEventListener('pointermove', handleMove);
-        document.addEventListener('pointerup', handleEnd);
-
-        // Prevent default touch behaviors
-        module.addEventListener('touchstart', (e) => {
-            if (e.target.closest('.module-close')) return;
-            e.preventDefault();
-        }, { passive: false });
+        // Touch events
+        module.addEventListener('touchstart', dragStart, { passive: false });
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('touchend', dragEnd);
     }
 
     setupAIChat(module) {
@@ -615,28 +626,37 @@ const additionalStyles = `
     width: 350px;
     transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
     will-change: transform;
-    touch-action: none; /* Prevent default touch interactions */
+    user-select: none;
 }
 
 @media (max-width: 768px) {
-    /* Prevent viewport scaling on mobile keyboard focus */
-    input, textarea {
-        font-size: 16px; /* Prevents automatic zoom on focus */
-    }
-
     body {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
+        overflow-y: auto;
+        position: static;
     }
 
-    .ai-message-input {
-        font-size: 16px;
+    .add-module-btn {
+        bottom: 30px;
+        right: 30px;
+        left: auto !important;
+        width: 60px;
+        height: 60px;
+        position: fixed;
+        z-index: 1000;
+    }
+
+    .module-container {
+        pointer-events: none;
+    }
+
+    .module {
+        pointer-events: auto;
     }
 
     .module-content {
-        touch-action: pan-y; /* Allow vertical scrolling within module */
+        touch-action: pan-y;
+        overflow-y: auto;
+        max-height: 70vh;
     }
 
     .theme-option {
