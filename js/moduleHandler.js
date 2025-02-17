@@ -319,10 +319,60 @@ class ModuleHandler {
                     </div>
                 `;
                 break;
-            case 'music':
-                moduleTitle = 'Music Player';
-                content = 'Music Library Coming Soon';
-                break;
+                case 'music':
+                    moduleTitle = 'Music Library';
+                    content = `
+                        <div class="music-module-container">
+                            <div class="music-header">
+                                <h3>Music Library</h3>
+                                <div class="music-search-container">
+                                    <input type="text" class="music-search-input" placeholder="Search songs...">
+                                    <input type="file" class="music-upload-input" accept="audio/*" hidden>
+                                    <button class="music-upload-btn">Upload</button>
+                                </div>
+                            </div>
+                
+                            <div class="music-player-container">
+                                <div class="current-track-info">
+                                    <span class="track-title">No track selected</span>
+                                    <span class="track-artist">-</span>
+                                </div>
+                                <audio class="music-audio-player" preload="metadata"></audio>
+                                
+                                <div class="music-controls">
+                                    <button class="prev-track-btn">⏮️</button>
+                                    <button class="play-pause-btn">▶️</button>
+                                    <button class="next-track-btn">⏭️</button>
+                                    
+                                    <input type="range" class="volume-slider" min="0" max="100" value="50">
+                                    
+                                    <div class="track-progress-container">
+                                        <span class="current-time">0:00</span>
+                                        <input type="range" class="track-progress-slider" min="0" max="100" value="0">
+                                        <span class="total-time">0:00</span>
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <div class="music-lists">
+                                <div class="recent-uploads">
+                                    <h4>Recent Uploads</h4>
+                                    <ul class="recent-uploads-list"></ul>
+                                </div>
+                                
+                                <div class="liked-songs">
+                                    <h4>Liked Songs</h4>
+                                    <ul class="liked-songs-list"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // After creating the module, set up music functionality
+                    setTimeout(() => {
+                        const musicModule = new MusicModule(module);
+                    }, 0);
+                    break;
             // In moduleHandler.js, in the createModule function, update the 'ai' case:
             case 'ai':
                 moduleTitle = 'AI Chat';
