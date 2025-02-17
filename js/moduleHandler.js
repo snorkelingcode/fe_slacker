@@ -471,6 +471,12 @@ class ModuleHandler {
         module.addEventListener('pointerdown', handleStart);
         document.addEventListener('pointermove', handleMove);
         document.addEventListener('pointerup', handleEnd);
+
+        // Prevent default touch behaviors
+        module.addEventListener('touchstart', (e) => {
+            if (e.target.closest('.module-close')) return;
+            e.preventDefault();
+        }, { passive: false });
     }
 
     setupAIChat(module) {
