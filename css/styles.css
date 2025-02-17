@@ -78,10 +78,6 @@ main {
     main {
         padding: 70px 10px 10px;
     }
-    .add-module-btn {
-        left: 30px;
-        right: auto;
-    }
 }
 
 /* Sign Out Button */
