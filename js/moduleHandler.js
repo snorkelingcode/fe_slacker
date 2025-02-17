@@ -620,19 +620,18 @@ window.initializeModuleHandler = () => {
 
 // Additional styles to support the changes
 const additionalStyles = `
-.module {
-    max-width: 95vw;
-    max-height: 80vh;
-    width: 350px;
-    transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
-    will-change: transform;
-    user-select: none;
-}
-
 @media (max-width: 768px) {
     body {
         overflow-y: auto;
         position: static;
+    }
+
+    .module-modal {
+        bottom: 100px;
+        left: 30px; /* Changed from right to left */
+        right: auto !important;
+        max-height: 60vh;
+        overflow-y: auto;
     }
 
     .add-module-btn {
@@ -657,10 +656,6 @@ const additionalStyles = `
         touch-action: pan-y;
         overflow-y: auto;
         max-height: 70vh;
-    }
-
-    .theme-option {
-        touch-action: manipulation; /* Ensure buttons are clickable */
     }
 }
 `;
