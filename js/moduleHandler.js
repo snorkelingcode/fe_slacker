@@ -345,10 +345,100 @@ class ModuleHandler {
                     }
                 }, 0);
                 break;
-            case 'market':
-                moduleTitle = 'Markets';
-                content = 'Stock and Crypto Prices Coming Soon';
-                break;
+                case 'market':
+                    moduleTitle = 'Markets';
+                    content = `
+                        <div class="market-header">
+                            <h3>Crypto Markets</h3>
+                            <button class="refresh-btn">↻</button>
+                        </div>
+                        <div class="market-list">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    `;
+                
+                    // After module is created, set up the market functionality
+                    setTimeout(() => {
+                        const marketList = module.querySelector('.market-list');
+                        const refreshBtn = module.querySelector('.refresh-btn');
+                
+                        const formatPrice = (price) => {
+                            return new Intl.NumberFormat('en-US', {
+                                style: 'currency',
+                                currency: 'USD',
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            }).format(price);
+                        };
+                
+                        const formatChange = (change) => {
+                            return change?.toFixed(2) + '%';
+                        };
+                
+                        const renderCryptoList = (data) => {
+                            marketList.innerHTML = '';
+                
+                            // Take top 5 cryptocurrencies
+                            const topCryptos = data.data.slice(0, 5);
+                
+                            topCryptos.forEach(crypto => {
+                                const priceChange = crypto.quote.USD.percent_change_24h;
+                                const changeClass = priceChange >= 0 ? 'positive-change' : 'negative-change';
+                                const changeIcon = priceChange >= 0 ? '↑' : '↓';
+                
+                                const cryptoElement = document.createElement('div');
+                                cryptoElement.className = 'crypto-item';
+                                cryptoElement.innerHTML = `
+                                    <div class="crypto-info">
+                                        <span class="crypto-symbol">${crypto.symbol}</span>
+                                        <span class="crypto-name">${crypto.name}</span>
+                                    </div>
+                                    <div class="crypto-price">
+                                        <span class="price-value">${formatPrice(crypto.quote.USD.price)}</span>
+                                        <span class="price-change ${changeClass}">
+                                            ${changeIcon} ${formatChange(priceChange)}
+                                        </span>
+                                    </div>
+                                `;
+                                marketList.appendChild(cryptoElement);
+                            });
+                        };
+                
+                        const showError = (message) => {
+                            marketList.innerHTML = `
+                                <div class="error-message">
+                                    ${message}
+                                    <button class="retry-btn">Retry</button>
+                                </div>
+                            `;
+                        };
+                
+                        const fetchCryptoData = async () => {
+                            try {
+                                marketList.innerHTML = '<div class="loading-spinner"></div>';
+                                const response = await makeApiCall(`${API_ENDPOINTS.crypto}/top`);
+                                renderCryptoList(response);
+                            } catch (error) {
+                                console.error('Error fetching crypto data:', error);
+                                showError('Failed to load crypto prices');
+                            }
+                        };
+                
+                        // Initial fetch
+                        fetchCryptoData();
+                
+                        // Setup refresh button
+                        refreshBtn.addEventListener('click', fetchCryptoData);
+                
+                        // Auto refresh every 5 minutes
+                        const refreshInterval = setInterval(fetchCryptoData, 5 * 60 * 1000);
+                
+                        // Cleanup when module is closed
+                        module.addEventListener('remove', () => {
+                            clearInterval(refreshInterval);
+                        });
+                    }, 0);
+                    break;
             default:
                 moduleTitle = 'Module';
                 content = 'Content Coming Soon';
