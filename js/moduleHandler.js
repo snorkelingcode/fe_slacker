@@ -323,24 +323,28 @@ class ModuleHandler {
                 moduleTitle = 'Music Player';
                 content = 'Music Library Coming Soon';
                 break;
-                case 'ai':
-                    moduleTitle = 'AI Chat';
-                    content = `
-                        <div class="ai-chat-container">
-                            <div class="ai-messages"></div>
-                            <div class="ai-input-area">
-                                <input type="text" class="ai-message-input" placeholder="Ask me anything...">
-                                <button class="ai-send-btn">Send</button>
-                            </div>
+            // In moduleHandler.js, in the createModule function, update the 'ai' case:
+            case 'ai':
+                moduleTitle = 'AI Chat';
+                content = `
+                    <div class="ai-chat-container">
+                        <div class="ai-messages"></div>
+                        <div class="ai-input-area">
+                            <input type="text" class="ai-message-input" placeholder="Ask me anything...">
+                            <button class="ai-send-btn">Send</button>
                         </div>
-                    `;
+                    </div>
+                `;
                 
-                    // After creating the module, set up the chat functionality
-                    const aiModule = module;
-                    if (aiModule) {
-                        setupAIChat(aiModule);
+                // After creating the module, set up the chat functionality
+                setTimeout(() => {
+                    if (typeof window.setupAIChat === 'function') {
+                        window.setupAIChat(module);
+                    } else {
+                        console.error('AI Chat setup function not found. Make sure aiChat.js is loaded.');
                     }
-                    break;
+                }, 0);
+                break;
             case 'market':
                 moduleTitle = 'Markets';
                 content = 'Stock and Crypto Prices Coming Soon';

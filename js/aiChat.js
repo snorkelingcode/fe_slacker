@@ -1,5 +1,5 @@
-// AI Chat Module Setup Function
-function setupAIChat(module) {
+// aiChat.js
+window.setupAIChat = function(module) {
     const messagesContainer = module.querySelector('.ai-messages');
     const messageInput = module.querySelector('.ai-message-input');
     const sendButton = module.querySelector('.ai-send-btn');
@@ -113,4 +113,4 @@ function setupAIChat(module) {
         sendButton.removeEventListener('click', sendMessage);
         messageInput.removeEventListener('keypress', sendMessage);
     };
-}
+};
