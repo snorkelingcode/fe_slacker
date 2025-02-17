@@ -515,11 +515,17 @@ class ModuleHandler {
                 messageInput.disabled = true;
                 sendButton.disabled = true;
         
+                // Send full message history with context
                 const response = await makeApiCall(API_ENDPOINTS.aiChat, {
                     method: 'POST',
                     body: JSON.stringify({ 
                         walletAddress: SessionManager.getWalletAddress(),
-                        message 
+                        messages: [
+                            { 
+                                role: 'user', 
+                                content: message 
+                            }
+                        ]
                     })
                 });
         
