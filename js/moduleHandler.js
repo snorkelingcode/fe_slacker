@@ -255,17 +255,20 @@ class ModuleHandler {
             console.log(`Module ${moduleId} already exists. Skipping creation.`);
             return null;
         }
-
+    
         const module = document.createElement('div');
         module.className = 'module';
         module.dataset.type = type;
         module.id = moduleId;
-
-        // Set position with mobile-aware positioning
+    
+        // Positioning logic
+        const isMobile = window.innerWidth <= 768;
+        
         if (position) {
+            // Use exact provided position (works best for desktop)
             module.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
         } else {
-            const isMobile = window.innerWidth <= 768;
+            // Different positioning for mobile and desktop
             if (isMobile) {
                 // Center on mobile
                 const moduleWidth = 300; // Approximate module width
@@ -274,14 +277,23 @@ class ModuleHandler {
                 const centerY = (window.innerHeight - moduleHeight) / 2;
                 module.style.transform = `translate3d(${centerX}px, ${centerY}px, 0)`;
             } else {
-                // Random positioning with more constraints on desktop
-                const maxWidth = window.innerWidth - 400;
-                const maxHeight = window.innerHeight - 400;
-                const initialX = Math.max(50, Math.min(Math.random() * maxWidth, maxWidth - 50));
-                const initialY = Math.max(50, Math.min(Math.random() * maxHeight, maxHeight - 50));
-                module.style.transform = `translate3d(${initialX}px, ${initialY}px, 0)`;
+                // Controlled desktop positioning
+                const defaultPositions = {
+                    'settings': { x: 20, y: 80 },
+                    'ai': { x: window.innerWidth - 370, y: 80 },
+                    'market': { x: 20, y: window.innerHeight - 500 },
+                    'music': { x: window.innerWidth - 370, y: window.innerHeight - 500 }
+                };
+    
+                const defaultPos = defaultPositions[type] || { 
+                    x: Math.max(50, Math.min(Math.random() * (window.innerWidth - 400), window.innerWidth - 400)),
+                    y: Math.max(50, Math.min(Math.random() * (window.innerHeight - 400), window.innerHeight - 400))
+                };
+    
+                module.style.transform = `translate3d(${defaultPos.x}px, ${defaultPos.y}px, 0)`;
             }
         }
+    
 
         let content = '';
         let moduleTitle = '';
@@ -373,27 +385,23 @@ class ModuleHandler {
         this.saveModuleState();
         return module;
     }
-
+    
     setupModuleDragging(module) {
-        let currentX = 0;
-        let currentY = 0;
+        let startX = 0;
+        let startY = 0;
         let initialX = 0;
         let initialY = 0;
         let isDragging = false;
-        let lastTap = 0;
-        let dragStartTime = 0;
-        let startX = 0;
-        let startY = 0;
-    
-        const getEventPosition = (e) => {
-            const clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX);
-            const clientY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY);
-            return { clientX, clientY };
+        
+        const getTransform = () => {
+            const transform = window.getComputedStyle(module).transform;
+            const matrix = new DOMMatrixReadOnly(transform);
+            return { x: matrix.e, y: matrix.f };
         };
     
         const handleStart = (e) => {
-            // Prevent dragging if clicking on interactive elements
-            const interactiveElements = [
+            // Prevent dragging on interactive elements
+            const interactiveSelectors = [
                 '.module-close', 
                 'input', 
                 'textarea', 
@@ -403,73 +411,46 @@ class ModuleHandler {
                 '.ai-message-input'
             ];
             
-            if (interactiveElements.some(selector => e.target.closest(selector))) {
+            if (interactiveSelectors.some(selector => e.target.closest(selector))) {
                 return;
             }
     
-            const { clientX, clientY } = getEventPosition(e);
-            if (!clientX || !clientY) return;
-    
-            // Prevent text selection during drag
+            // Prevent default to stop text selection
             e.preventDefault();
     
-            // Get current transform
-            const transform = window.getComputedStyle(module).transform;
-            const matrix = new DOMMatrixReadOnly(transform);
-            
-            // Calculate initial positions
+            // Get initial positions
+            const { clientX, clientY } = e;
+            const { x, y } = getTransform();
+    
             startX = clientX;
             startY = clientY;
-            initialX = matrix.e;
-            initialY = matrix.f;
+            initialX = x;
+            initialY = y;
     
-            dragStartTime = Date.now();
             isDragging = true;
             module.classList.add('dragging');
     
             // Capture pointer for smooth dragging
             module.setPointerCapture(e.pointerId);
-    
-            // Handle double-tap for mobile
-            if (e.type === 'touchstart') {
-                const currentTime = new Date().getTime();
-                const tapLength = currentTime - lastTap;
-                if (tapLength < 300 && tapLength > 0) {
-                    // Double tap detected
-                    this.toggleModuleSize(module);
-                    return;
-                }
-                lastTap = currentTime;
-            }
         };
     
         const handleMove = (e) => {
             if (!isDragging) return;
     
-            const { clientX, clientY } = getEventPosition(e);
-            if (!clientX || !clientY) return;
-    
-            // Prevent default to stop text selection
             e.preventDefault();
     
+            const { clientX, clientY } = e;
+            
             // Calculate delta
             const deltaX = clientX - startX;
             const deltaY = clientY - startY;
     
-            // Update position
-            currentX = initialX + deltaX;
-            currentY = initialY + deltaY;
+            // New position
+            const newX = initialX + deltaX;
+            const newY = initialY + deltaY;
     
-            // Keep module within viewport bounds
-            const isMobile = window.innerWidth <= 768;
-            const maxWidth = isMobile ? window.innerWidth - 20 : window.innerWidth - module.offsetWidth;
-            const maxHeight = window.innerHeight - (isMobile ? 60 : module.offsetHeight);
-    
-            currentX = Math.max(10, Math.min(currentX, maxWidth - 10));
-            currentY = Math.max(10, Math.min(currentY, maxHeight - 10));
-    
-            // Smooth transform with hardware acceleration
-            module.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+            // Apply transform
+            module.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
         };
     
         const handleEnd = (e) => {
@@ -478,22 +459,17 @@ class ModuleHandler {
             // Release pointer capture
             module.releasePointerCapture(e.pointerId);
     
-            initialX = currentX;
-            initialY = currentY;
             isDragging = false;
             module.classList.remove('dragging');
             
-            // Only save if it was a genuine drag (not a quick tap)
-            if (Date.now() - dragStartTime > 100) {
-                this.saveModuleState();
-            }
+            // Save module state
+            this.saveModuleState();
         };
-
-        // Use pointer events for better cross-device support
-        module.addEventListener('pointerdown', handleStart, { passive: false });
-        document.addEventListener('pointermove', handleMove, { passive: false });
+    
+        // Pointer events for smooth dragging
+        module.addEventListener('pointerdown', handleStart);
+        document.addEventListener('pointermove', handleMove);
         document.addEventListener('pointerup', handleEnd);
-        document.addEventListener('pointercancel', handleEnd);
 
         // Prevent default touch behaviors
         module.addEventListener('touchstart', (e) => {
