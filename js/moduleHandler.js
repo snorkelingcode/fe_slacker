@@ -392,10 +392,18 @@ class ModuleHandler {
         };
     
         const handleStart = (e) => {
-            // Prevent dragging if clicking on close button or input
-            if (e.target.closest('.module-close') || 
-                e.target.tagName === 'INPUT' || 
-                e.target.tagName === 'TEXTAREA') {
+            // Prevent dragging if clicking on interactive elements
+            const interactiveElements = [
+                '.module-close', 
+                'input', 
+                'textarea', 
+                'button', 
+                '.theme-option', 
+                '.ai-send-btn', 
+                '.ai-message-input'
+            ];
+            
+            if (interactiveElements.some(selector => e.target.closest(selector))) {
                 return;
             }
     
@@ -627,43 +635,36 @@ const additionalStyles = `
 .module {
     max-width: 95vw;
     max-height: 80vh;
-    width: 350px; /* Slightly wider desktop modules */
+    width: 350px;
     transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
-    will-change: transform; /* Hint to browser for performance */
+    will-change: transform;
+    touch-action: none; /* Prevent default touch interactions */
 }
 
 @media (max-width: 768px) {
-    .module {
-        width: 85vw;
-        height: auto;
-        min-height: 200px;
+    /* Prevent viewport scaling on mobile keyboard focus */
+    input, textarea {
+        font-size: 16px; /* Prevents automatic zoom on focus */
     }
 
-    .module-expanded {
-        width: 95vw !important;
-        height: 80vh !important;
-        z-index: 1002;
+    body {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
     }
 
-    .add-module-btn {
-        bottom: 30px;
-        right: 30px;
-        left: auto;
-        width: 60px;
-        height: 60px;
+    .ai-message-input {
+        font-size: 16px;
     }
 
-    .module-modal {
-        bottom: 100px;
-        right: 30px;
-        left: auto;
-        max-height: 60vh;
-        overflow-y: auto;
+    .module-content {
+        touch-action: pan-y; /* Allow vertical scrolling within module */
     }
-}
 
-.module-option span {
-    margin-right: 10px;
+    .theme-option {
+        touch-action: manipulation; /* Ensure buttons are clickable */
+    }
 }
 `;
 
