@@ -265,13 +265,22 @@ class ModuleHandler {
         if (position) {
             module.style.transform = `translate3d(${position.x}px, ${position.y}px, 0)`;
         } else {
-            // More conservative initial positioning for mobile
             const isMobile = window.innerWidth <= 768;
-            const maxWidth = isMobile ? window.innerWidth - 40 : window.innerWidth - 420;
-            const maxHeight = isMobile ? window.innerHeight - 100 : window.innerHeight - 200;
-            const initialX = Math.min(Math.random() * maxWidth, maxWidth - 20);
-            const initialY = Math.min(Math.random() * maxHeight, maxHeight - 20);
-            module.style.transform = `translate3d(${initialX}px, ${initialY}px, 0)`;
+            if (isMobile) {
+                // Center on mobile
+                const moduleWidth = 300; // Approximate module width
+                const moduleHeight = 400; // Approximate module height
+                const centerX = (window.innerWidth - moduleWidth) / 2;
+                const centerY = (window.innerHeight - moduleHeight) / 2;
+                module.style.transform = `translate3d(${centerX}px, ${centerY}px, 0)`;
+            } else {
+                // Random positioning with more constraints on desktop
+                const maxWidth = window.innerWidth - 400;
+                const maxHeight = window.innerHeight - 400;
+                const initialX = Math.max(50, Math.min(Math.random() * maxWidth, maxWidth - 50));
+                const initialY = Math.max(50, Math.min(Math.random() * maxHeight, maxHeight - 50));
+                module.style.transform = `translate3d(${initialX}px, ${initialY}px, 0)`;
+            }
         }
 
         let content = '';
@@ -373,20 +382,15 @@ class ModuleHandler {
         let isDragging = false;
         let lastTap = 0;
         let dragStartTime = 0;
-
+        let startX = 0;
+        let startY = 0;
+    
         const getEventPosition = (e) => {
-            if (e.touches && e.touches.length > 0) {
-                return {
-                    clientX: e.touches[0].clientX,
-                    clientY: e.touches[0].clientY
-                };
-            }
-            return {
-                clientX: e.clientX,
-                clientY: e.clientY
-            };
+            const clientX = e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0] && e.touches[0].clientY);
+            return { clientX, clientY };
         };
-
+    
         const handleStart = (e) => {
             // Prevent dragging if clicking on close button or input
             if (e.target.closest('.module-close') || 
@@ -394,16 +398,30 @@ class ModuleHandler {
                 e.target.tagName === 'TEXTAREA') {
                 return;
             }
-
-            const position = getEventPosition(e);
-            const rect = module.getBoundingClientRect();
-            initialX = position.clientX - rect.left;
-            initialY = position.clientY - rect.top;
-
+    
+            const { clientX, clientY } = getEventPosition(e);
+            if (!clientX || !clientY) return;
+    
+            // Prevent text selection during drag
+            e.preventDefault();
+    
+            // Get current transform
+            const transform = window.getComputedStyle(module).transform;
+            const matrix = new DOMMatrixReadOnly(transform);
+            
+            // Calculate initial positions
+            startX = clientX;
+            startY = clientY;
+            initialX = matrix.e;
+            initialY = matrix.f;
+    
             dragStartTime = Date.now();
             isDragging = true;
             module.classList.add('dragging');
-
+    
+            // Capture pointer for smooth dragging
+            module.setPointerCapture(e.pointerId);
+    
             // Handle double-tap for mobile
             if (e.type === 'touchstart') {
                 const currentTime = new Date().getTime();
@@ -411,37 +429,47 @@ class ModuleHandler {
                 if (tapLength < 300 && tapLength > 0) {
                     // Double tap detected
                     this.toggleModuleSize(module);
-                    e.preventDefault();
                     return;
                 }
                 lastTap = currentTime;
             }
         };
-
+    
         const handleMove = (e) => {
             if (!isDragging) return;
-
+    
+            const { clientX, clientY } = getEventPosition(e);
+            if (!clientX || !clientY) return;
+    
+            // Prevent default to stop text selection
             e.preventDefault();
-            const position = getEventPosition(e);
-            
-            currentX = position.clientX - initialX;
-            currentY = position.clientY - initialY;
-
+    
+            // Calculate delta
+            const deltaX = clientX - startX;
+            const deltaY = clientY - startY;
+    
+            // Update position
+            currentX = initialX + deltaX;
+            currentY = initialY + deltaY;
+    
             // Keep module within viewport bounds
             const isMobile = window.innerWidth <= 768;
             const maxWidth = isMobile ? window.innerWidth - 20 : window.innerWidth - module.offsetWidth;
             const maxHeight = window.innerHeight - (isMobile ? 60 : module.offsetHeight);
-
+    
             currentX = Math.max(10, Math.min(currentX, maxWidth - 10));
             currentY = Math.max(10, Math.min(currentY, maxHeight - 10));
-
-            // Use translate3d for better performance
+    
+            // Smooth transform with hardware acceleration
             module.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
         };
-
-        const handleEnd = () => {
+    
+        const handleEnd = (e) => {
             if (!isDragging) return;
-
+    
+            // Release pointer capture
+            module.releasePointerCapture(e.pointerId);
+    
             initialX = currentX;
             initialY = currentY;
             isDragging = false;
