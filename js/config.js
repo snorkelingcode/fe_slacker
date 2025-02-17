@@ -7,7 +7,8 @@ const API_ENDPOINTS = {
     notifications: `${API_BASE_URL}notifications`,
     aiChat: `${API_BASE_URL}ai/chat`,
     upload: `${API_BASE_URL}upload`,
-    modules: `${API_BASE_URL}users/modules`
+    modules: `${API_BASE_URL}users/modules`,
+    crypto: `${API_BASE_URL}crypto`
 };
 
 const DEFAULT_FETCH_OPTIONS = {
