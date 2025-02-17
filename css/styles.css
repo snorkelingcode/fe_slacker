@@ -255,6 +255,21 @@ main {
     background-color: #bb2d3b;
 }
 
+.delete-comment-btn {
+    padding: 0.4rem 0.8rem;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s;
+}
+
+.delete-comment-btn:hover {
+    background-color: #bb2d3b;
+}
+
 /* Post Interactions */
 .post-interactions {
     display: flex;
