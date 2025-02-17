@@ -323,21 +323,24 @@ class ModuleHandler {
                 moduleTitle = 'Music Player';
                 content = 'Music Library Coming Soon';
                 break;
-            case 'ai':
-                moduleTitle = 'AI Chat';
-                // Create an instance of ReployAIChat
-                const aiChat = new ReployAIChat();
-                
-                content = `
-                    <div class="ai-chat-container">
-                        <div class="ai-messages"></div>
-                        <div class="ai-input-area">
-                            <input type="text" class="ai-message-input" placeholder="Ask me anything...">
-                            <button class="ai-send-btn">Send</button>
+                case 'ai':
+                    moduleTitle = 'AI Chat';
+                    content = `
+                        <div class="ai-chat-container">
+                            <div class="ai-messages"></div>
+                            <div class="ai-input-area">
+                                <input type="text" class="ai-message-input" placeholder="Ask me anything...">
+                                <button class="ai-send-btn">Send</button>
+                            </div>
                         </div>
-                    </div>
-                `;
-                break;
+                    `;
+                
+                    // After creating the module, set up the chat functionality
+                    const aiModule = module;
+                    if (aiModule) {
+                        setupAIChat(aiModule);
+                    }
+                    break;
             case 'market':
                 moduleTitle = 'Markets';
                 content = 'Stock and Crypto Prices Coming Soon';
@@ -497,10 +500,7 @@ class ModuleHandler {
         const messagesContainer = module.querySelector('.ai-messages');
         const messageInput = module.querySelector('.ai-message-input');
         const sendButton = module.querySelector('.ai-send-btn');
-    
-        // Create ReployAIChat instance specific to this module
-        const aiChat = new ReployAIChat();
-    
+
         const addMessage = (message, sender) => {
             const messageEl = document.createElement('div');
             messageEl.classList.add('ai-message', sender);
@@ -508,7 +508,7 @@ class ModuleHandler {
             messagesContainer.appendChild(messageEl);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
-    
+
         const sendMessage = async () => {
             const message = messageInput.value.trim();
             if (!message) return;
@@ -521,10 +521,15 @@ class ModuleHandler {
                 messageInput.disabled = true;
                 sendButton.disabled = true;
         
-                // Use the new aiChat method to send message
-                const response = await aiChat.sendMessage(message);
+                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        walletAddress: SessionManager.getWalletAddress(),
+                        message 
+                    })
+                });
         
-                addMessage(response, 'ai-message');
+                addMessage(response.message, 'ai-message');
             } catch (error) {
                 addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
                 console.error('AI Chat Error:', error);
@@ -534,7 +539,7 @@ class ModuleHandler {
                 messageInput.focus();
             }
         };
-    
+
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -683,59 +688,3 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error initializing theme:', error);
     }
 });
-
-class ReployAIChat {
-    constructor() {
-        this.messages = [];
-        this.maxContextLength = 10;
-    }
-
-    async sendMessage(userMessage) {
-        // Prepare messages including system context
-        const messagePayload = [
-            { 
-                role: 'system', 
-                content: 'You are a helpful AI assistant for a social media platform called Slacker. Keep responses concise and engaging.'
-            },
-            ...this.messages,
-            {
-                role: 'user', 
-                content: userMessage
-            }
-        ];
-
-        try {
-            console.log('Sending AI Chat Request:', messagePayload); // Add logging
-
-            const response = await makeApiCall(API_ENDPOINTS.aiChat, {
-                method: 'POST',
-                body: JSON.stringify({ 
-                    walletAddress: SessionManager.getWalletAddress(),
-                    messages: messagePayload
-                })
-            });
-
-            console.log('AI Chat Response:', response); // Add logging
-
-            // Add messages to context
-            this.messages.push(
-                { role: 'user', content: userMessage },
-                { role: 'assistant', content: response.message }
-            );
-
-            // Trim context if too long
-            if (this.messages.length > this.maxContextLength * 2) {
-                this.messages = this.messages.slice(-this.maxContextLength * 2);
-            }
-
-            return response.message;
-        } catch (error) {
-            console.error('Frontend AI Chat Error:', error);
-            return 'Sorry, I couldn\'t process your request at the moment.';
-        }
-    }
-
-    clearContext() {
-        this.messages = [];
-    }
-}
