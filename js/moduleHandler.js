@@ -325,6 +325,9 @@ class ModuleHandler {
                 break;
             case 'ai':
                 moduleTitle = 'AI Chat';
+                // Create an instance of ReployAIChat
+                const aiChat = new ReployAIChat();
+                
                 content = `
                     <div class="ai-chat-container">
                         <div class="ai-messages"></div>
@@ -494,7 +497,10 @@ class ModuleHandler {
         const messagesContainer = module.querySelector('.ai-messages');
         const messageInput = module.querySelector('.ai-message-input');
         const sendButton = module.querySelector('.ai-send-btn');
-
+    
+        // Create ReployAIChat instance specific to this module
+        const aiChat = new ReployAIChat();
+    
         const addMessage = (message, sender) => {
             const messageEl = document.createElement('div');
             messageEl.classList.add('ai-message', sender);
@@ -502,7 +508,7 @@ class ModuleHandler {
             messagesContainer.appendChild(messageEl);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         };
-
+    
         const sendMessage = async () => {
             const message = messageInput.value.trim();
             if (!message) return;
@@ -515,21 +521,10 @@ class ModuleHandler {
                 messageInput.disabled = true;
                 sendButton.disabled = true;
         
-                // Send full message history with context
-                const response = await makeApiCall(API_ENDPOINTS.aiChat, {
-                    method: 'POST',
-                    body: JSON.stringify({ 
-                        walletAddress: SessionManager.getWalletAddress(),
-                        messages: [
-                            { 
-                                role: 'user', 
-                                content: message 
-                            }
-                        ]
-                    })
-                });
+                // Use the new aiChat method to send message
+                const response = await aiChat.sendMessage(message);
         
-                addMessage(response.message, 'ai-message');
+                addMessage(response, 'ai-message');
             } catch (error) {
                 addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
                 console.error('AI Chat Error:', error);
@@ -539,7 +534,7 @@ class ModuleHandler {
                 messageInput.focus();
             }
         };
-
+    
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -688,3 +683,54 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Error initializing theme:', error);
     }
 });
+
+class ReployAIChat {
+    constructor() {
+        this.messages = [];
+        this.maxContextLength = 10; // Limit message history
+    }
+
+    async sendMessage(userMessage) {
+        // Add user message to context
+        this.messages.push({
+            role: 'user', 
+            content: userMessage
+        });
+
+        // Trim message history if too long
+        if (this.messages.length > this.maxContextLength) {
+            this.messages = this.messages.slice(-this.maxContextLength);
+        }
+
+        try {
+            const response = await makeApiCall(API_ENDPOINTS.aiChat, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    walletAddress: SessionManager.getWalletAddress(),
+                    messages: [
+                        { 
+                            role: 'system', 
+                            content: 'You are a helpful AI assistant for a social media platform called Slacker. Keep responses concise and engaging.'
+                        },
+                        ...this.messages
+                    ]
+                })
+            });
+
+            // Add AI response to context
+            this.messages.push({
+                role: 'assistant', 
+                content: response.message
+            });
+
+            return response.message;
+        } catch (error) {
+            console.error('Reploy AI Error:', error);
+            return 'Sorry, I couldn\'t process your request at the moment.';
+        }
+    }
+
+    clearContext() {
+        this.messages = [];
+    }
+}
