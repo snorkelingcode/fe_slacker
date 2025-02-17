@@ -125,13 +125,15 @@ class ModuleHandler {
     saveModuleState() {
         const moduleStates = Array.from(this.modules.entries()).map(([id, module]) => {
             const rect = module.getBoundingClientRect();
+            const isExpanded = module.classList.contains('module-expanded');
             return {
                 id,
                 type: module.dataset.type,
                 position: {
                     x: rect.left,
                     y: rect.top
-                }
+                },
+                isExpanded
             };
         });
         localStorage.setItem('moduleStates', JSON.stringify(moduleStates));
@@ -141,11 +143,14 @@ class ModuleHandler {
         try {
             const savedStates = JSON.parse(localStorage.getItem('moduleStates') || '[]');
             savedStates.forEach(moduleState => {
-                this.createModule(
+                const module = this.createModule(
                     moduleState.type,
                     moduleState.position,
                     moduleState.id
                 );
+                if (module && moduleState.isExpanded) {
+                    this.toggleModuleSize(module);
+                }
             });
         } catch (error) {
             console.error('Error loading saved modules:', error);
@@ -171,7 +176,6 @@ class ModuleHandler {
     createModule(type, position = null, id = null) {
         const moduleId = id || `module-${Date.now()}`;
         
-        // Check if module already exists
         if (this.modules.has(moduleId)) {
             console.log(`Module ${moduleId} already exists. Skipping creation.`);
             return null;
@@ -182,12 +186,16 @@ class ModuleHandler {
         module.dataset.type = type;
         module.id = moduleId;
 
-        // Set position
+        // Set position with mobile-aware positioning
         if (position) {
             module.style.transform = `translate(${position.x}px, ${position.y}px)`;
         } else {
-            const initialX = Math.random() * (window.innerWidth - 420);
-            const initialY = Math.random() * (window.innerHeight - 200);
+            // More conservative initial positioning for mobile
+            const isMobile = window.innerWidth <= 768;
+            const maxWidth = isMobile ? window.innerWidth - 40 : window.innerWidth - 420;
+            const maxHeight = isMobile ? window.innerHeight - 100 : window.innerHeight - 200;
+            const initialX = Math.min(Math.random() * maxWidth, maxWidth - 20);
+            const initialY = Math.min(Math.random() * maxHeight, maxHeight - 20);
             module.style.transform = `translate(${initialX}px, ${initialY}px)`;
         }
 
@@ -299,19 +307,14 @@ class ModuleHandler {
             const message = messageInput.value.trim();
             if (!message) return;
         
-            // Show user message
             addMessage(message, 'user-message');
             messageInput.value = '';
         
             try {
-                // Prevent dragging during API call
                 module.classList.remove('dragging');
-        
-                // Disable input during request
                 messageInput.disabled = true;
                 sendButton.disabled = true;
         
-                // Send message to backend
                 const response = await makeApiCall(API_ENDPOINTS.aiChat, {
                     method: 'POST',
                     body: JSON.stringify({ 
@@ -320,7 +323,6 @@ class ModuleHandler {
                     })
                 });
         
-                // Show AI response
                 addMessage(response.message, 'ai-message');
             } catch (error) {
                 addMessage('Sorry, I couldn\'t process your request.', 'ai-message');
@@ -332,16 +334,132 @@ class ModuleHandler {
             }
         };
 
-        // Send on button click
         sendButton.addEventListener('click', sendMessage);
-
-        // Send on Enter key
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 sendMessage();
             }
         });
+    }
+
+    setupModuleDragging(module) {
+        let currentX = 0;
+        let currentY = 0;
+        let initialX = 0;
+        let initialY = 0;
+        let isDragging = false;
+        let lastTap = 0; // For double-tap detection
+
+        const getEventPosition = (e) => {
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    clientX: e.touches[0].clientX,
+                    clientY: e.touches[0].clientY
+                };
+            }
+            return {
+                clientX: e.clientX,
+                clientY: e.clientY
+            };
+        };
+
+        const handleStart = (e) => {
+            if (e.target.classList.contains('module-close')) return;
+
+            const position = getEventPosition(e);
+            const rect = module.getBoundingClientRect();
+            initialX = position.clientX - rect.left;
+            initialY = position.clientY - rect.top;
+
+            if (e.target === module || module.contains(e.target)) {
+                // Handle double-tap for mobile
+                if (e.type === 'touchstart') {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTap;
+                    if (tapLength < 300 && tapLength > 0) {
+                        // Double tap detected
+                        this.toggleModuleSize(module);
+                        e.preventDefault();
+                        return;
+                    }
+                    lastTap = currentTime;
+                }
+
+                isDragging = true;
+                module.classList.add('dragging');
+            }
+        };
+
+        const handleMove = (e) => {
+            if (!isDragging) return;
+
+            e.preventDefault();
+            const position = getEventPosition(e);
+            
+            currentX = position.clientX - initialX;
+            currentY = position.clientY - initialY;
+
+            // Keep module within viewport bounds
+            const isMobile = window.innerWidth <= 768;
+            const maxWidth = isMobile ? window.innerWidth - 20 : window.innerWidth - module.offsetWidth;
+            const maxHeight = window.innerHeight - (isMobile ? 60 : module.offsetHeight);
+
+            currentX = Math.max(10, Math.min(currentX, maxWidth - 10));
+            currentY = Math.max(10, Math.min(currentY, maxHeight - 10));
+
+            module.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        };
+
+        const handleEnd = () => {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+            module.classList.remove('dragging');
+            this.saveModuleState();
+        };
+
+        // Mouse events
+        module.addEventListener('mousedown', handleStart);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+
+        // Touch events
+        module.addEventListener('touchstart', handleStart, { passive: false });
+        document.addEventListener('touchmove', handleMove, { passive: false });
+        document.addEventListener('touchend', handleEnd);
+        
+        // Prevent default touch behavior to avoid scrolling while dragging
+        module.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    }
+
+    toggleModuleSize(module) {
+        const isMobile = window.innerWidth <= 768;
+        if (!isMobile) return; // Only toggle on mobile
+
+        const isExpanded = module.classList.contains('module-expanded');
+        
+        if (isExpanded) {
+            module.classList.remove('module-expanded');
+            module.style.width = '';
+            module.style.height = '';
+        } else {
+            module.classList.add('module-expanded');
+            module.style.width = '95vw';
+            module.style.height = '80vh';
+            
+            // Center the expanded module
+            const rect = module.getBoundingClientRect();
+            const centerX = (window.innerWidth - rect.width) / 2;
+            const centerY = (window.innerHeight - rect.height) / 2;
+            module.style.transform = `translate(${centerX}px, ${centerY}px)`;
+        }
+        
+        this.saveModuleState();
     }
 
     async setTheme(theme) {
@@ -368,14 +486,11 @@ class ModuleHandler {
                     ErrorHandler.showSuccess('Theme updated successfully!', this.container);
                 } catch (error) {
                     console.error('Error updating theme on server:', error);
-                    // Still keep the theme locally even if server update fails
                 }
             }
         } catch (error) {
             console.error('Error setting theme:', error);
             ErrorHandler.showError('Failed to update theme', this.container);
-
-            // Revert theme in localStorage if update fails
             const previousTheme = localStorage.getItem('theme') || 'light';
             this.applyTheme(previousTheme);
         }
@@ -384,108 +499,97 @@ class ModuleHandler {
     applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme);
     }
+}
 
-    setupModuleDragging(module) {
-        let currentX = 0;
-        let currentY = 0;
-        let initialX = 0;
-        let initialY = 0;
-        let isDragging = false;
+        // Initialize singleton instance
+        ModuleHandler.instance = null;
 
-        const handleMouseDown = (e) => {
-            if (e.target.classList.contains('module-close')) return;
-
-            const rect = module.getBoundingClientRect();
-            initialX = e.clientX - rect.left;
-            initialY = e.clientY - rect.top;
-
-            if (e.target === module || module.contains(e.target)) {
-                isDragging = true;
-                module.classList.add('dragging');
+        // Global initialization function
+        window.initializeModuleHandler = () => {
+            if (!window.moduleHandlerInstance) {
+                window.moduleHandlerInstance = new ModuleHandler();
             }
+            return window.moduleHandlerInstance;
         };
 
-        const handleMouseMove = (e) => {
-            if (!isDragging) return;
+        // Additional styles for mobile responsiveness
+        const additionalStyles = `
+        .module {
+            max-width: 95vw;
+            max-height: 80vh;
+            width: 90vw;
+            transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
+        }
 
-            e.preventDefault();
-            
-            currentX = e.clientX - initialX;
-            currentY = e.clientY - initialY;
+        @media (max-width: 768px) {
+            .module {
+                width: 85vw;
+                height: auto;
+                min-height: 200px;
+            }
 
-            // Keep module within viewport bounds
-            currentX = Math.max(0, Math.min(currentX, window.innerWidth - module.offsetWidth));
-            currentY = Math.max(0, Math.min(currentY, window.innerHeight - module.offsetHeight));
+            .module-expanded {
+                width: 95vw !important;
+                height: 80vh !important;
+                z-index: 1002;
+            }
 
-            module.style.transform = `translate(${currentX}px, ${currentY}px)`;
-        };
+            .module-content {
+                max-height: calc(80vh - 60px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
 
-        const handleMouseUp = () => {
-            initialX = currentX;
-            initialY = currentY;
-            isDragging = false;
-            module.classList.remove('dragging');
-            this.saveModuleState();
-        };
+            .ai-chat-container {
+                height: calc(80vh - 100px);
+            }
 
-        module.addEventListener('mousedown', handleMouseDown);
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    }
-}
+            .module-header {
+                padding: 12px;
+            }
 
-// Initialize singleton instance
-ModuleHandler.instance = null;
+            .module-close {
+                padding: 8px 12px;
+                font-size: 24px;
+            }
 
-// Global initialization function
-window.initializeModuleHandler = () => {
-    if (!window.moduleHandlerInstance) {
-        window.moduleHandlerInstance = new ModuleHandler();
-    }
-    return window.moduleHandlerInstance;
-};
+            .ai-messages {
+                max-height: calc(80vh - 160px);
+            }
 
+            .ai-input-area {
+                padding: 10px;
+            }
+        }
 
-// Additional styles for modules
-const additionalStyles = `
-.module-option {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    cursor: pointer;
-    border-radius: 6px;
-    transition: background-color 0.2s;
-}
+        .module-modal {
+            bottom: 100px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
 
-.module-option:hover {
-    background-color: var(--bg-accent);
-}
+        .add-module-btn {
+            bottom: 30px;
+            left: 30px;
+            width: 60px;
+            height: 60px;
+        }
 
-.module-option span {
-    margin-right: 10px;
-}
-`;
+        .module-option span {
+            margin-right: 10px;
+        }
+        `;
 
-// Add the styles to the document
-const styleSheet = document.createElement('style');
-styleSheet.textContent = additionalStyles;
-document.head.appendChild(styleSheet);
+        // Add the styles to the document
+        const styleSheet = document.createElement('style');
+        styleSheet.textContent = additionalStyles;
+        document.head.appendChild(styleSheet);
 
-// Initialize module handler when DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
-    // Destroy any existing global module handler
-    if (window.moduleHandlerInstance) {
-        window.moduleHandlerInstance.destroy();
-    }
-
-    // Initialize new module handler
-    window.moduleHandlerInstance = new ModuleHandler();
-
-    // Initialize theme after module handler
-    await window.moduleHandlerInstance.initializeTheme();
-});
+        // Initialize module handler when DOM is loaded
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.moduleHandlerInstance) {
+                window.moduleHandlerInstance.destroy();
+            }
+            window.moduleHandlerInstance = new ModuleHandler();
+            await window.moduleHandlerInstance.initializeTheme();
+        });
