@@ -517,64 +517,54 @@ class ModuleHandler {
         .module {
             max-width: 95vw;
             max-height: 80vh;
-            width: 90vw;
+            width: 300px; /* Reduced desktop width */
             transition: transform 0.2s ease, width 0.3s ease, height 0.3s ease;
         }
-
+        
         @media (max-width: 768px) {
             .module {
                 width: 85vw;
                 height: auto;
                 min-height: 200px;
             }
-
+        
             .module-expanded {
                 width: 95vw !important;
                 height: 80vh !important;
                 z-index: 1002;
             }
-
+        
             .module-content {
                 max-height: calc(80vh - 60px);
                 overflow-y: auto;
                 -webkit-overflow-scrolling: touch;
             }
-
+        
             .ai-chat-container {
-                height: calc(80vh - 100px);
+                height: 300px; /* Reduced height for mobile AI chat */
             }
-
-            .module-header {
-                padding: 12px;
-            }
-
-            .module-close {
-                padding: 8px 12px;
-                font-size: 24px;
-            }
-
+        
             .ai-messages {
-                max-height: calc(80vh - 160px);
+                max-height: calc(300px - 100px); /* Adjusted to match container height */
             }
-
-            .ai-input-area {
-                padding: 10px;
+        
+            .add-module-btn {
+                bottom: 30px;
+                right: 30px; /* Changed from left to right */
+                left: auto; /* Remove left positioning */
+                width: 60px;
+                height: 60px;
+            }
+        
+            .module-modal {
+                bottom: 100px;
+                right: 30px; /* Align with the add module button */
+                left: auto; /* Remove left positioning */
+                max-height: 60vh;
+                overflow-y: auto;
             }
         }
-
-        .module-modal {
-            bottom: 100px;
-            max-height: 60vh;
-            overflow-y: auto;
-        }
-
-        .add-module-btn {
-            bottom: 30px;
-            left: 30px;
-            width: 60px;
-            height: 60px;
-        }
-
+        
         .module-option span {
             margin-right: 10px;
         }
