@@ -319,65 +319,28 @@ class ModuleHandler {
                     </div>
                 `;
                 break;
-                case 'music':
-                    moduleTitle = 'Music';
+                case 'ai':
+                    moduleTitle = 'AI Chat';
                     content = `
-                        <div class="music-module-container">
-                            <div class="music-header">
-                                <div class="music-search-container">
-                                    <input type="text" class="music-search-input" placeholder="Search songs...">
-                                    <input type="file" class="music-upload-input" accept="audio/*" hidden>
-                                    <button class="music-upload-btn">Upload</button>
-                                </div>
-                                <div class="music-view-selector">
-                                    <button class="view-liked-btn active">Liked Songs</button>
-                                    <button class="view-recent-btn">Recent Uploads</button>
-                                </div>
-                            </div>
-                
-                            <div class="music-lists">
-                                <div class="liked-songs active">
-                                    <div class="songs-list empty-list">
-                                        No liked songs yet
-                                    </div>
-                                </div>
-                                
-                                <div class="recent-uploads">
-                                    <div class="songs-list empty-list">
-                                        No recent uploads yet
-                                    </div>
-                                </div>
-                            </div>
-                
-                            <div class="music-player-container" style="display: none;">
-                                <div class="current-track-info">
-                                    <span class="track-title">No track selected</span>
-                                    <span class="track-artist">-</span>
-                                </div>
-                                <audio class="music-audio-player" preload="metadata"></audio>
-                                
-                                <div class="music-controls">
-                                    <button class="prev-track-btn">⏮️</button>
-                                    <button class="play-pause-btn">▶️</button>
-                                    <button class="next-track-btn">⏭️</button>
-                                    
-                                    <input type="range" class="volume-slider" min="0" max="100" value="50">
-                                    
-                                    <div class="track-progress-container">
-                                        <span class="current-time">0:00</span>
-                                        <input type="range" class="track-progress-slider" min="0" max="100" value="0">
-                                        <span class="total-time">0:00</span>
-                                    </div>
-                                </div>
+                        <div class="ai-chat-container">
+                            <div class="ai-messages"></div>
+                            <div class="ai-input-area">
+                                <input type="text" class="ai-message-input" placeholder="Ask me anything...">
+                                <button class="ai-send-btn">Send</button>
                             </div>
                         </div>
                     `;
                     
-                    // After creating the module, set up music functionality
+                    // After creating the module, set up the chat functionality
                     setTimeout(() => {
-                        const musicModule = new MusicModule(module);
+                        if (typeof window.setupAIChat === 'function') {
+                            window.setupAIChat(module);
+                        } else {
+                            console.error('AI Chat setup function not found. Make sure aiChat.js is loaded.');
+                        }
                     }, 0);
-                    break;case 'music':
+                    break;
+                    case 'music':
                     moduleTitle = 'Music Library';
                     content = `
                     <div class="music-module-container">
