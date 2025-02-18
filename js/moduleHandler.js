@@ -320,6 +320,64 @@ class ModuleHandler {
                 `;
                 break;
                 case 'music':
+                    moduleTitle = 'Music';
+                    content = `
+                        <div class="music-module-container">
+                            <div class="music-header">
+                                <div class="music-search-container">
+                                    <input type="text" class="music-search-input" placeholder="Search songs...">
+                                    <input type="file" class="music-upload-input" accept="audio/*" hidden>
+                                    <button class="music-upload-btn">Upload</button>
+                                </div>
+                                <div class="music-view-selector">
+                                    <button class="view-liked-btn active">Liked Songs</button>
+                                    <button class="view-recent-btn">Recent Uploads</button>
+                                </div>
+                            </div>
+                
+                            <div class="music-lists">
+                                <div class="liked-songs active">
+                                    <div class="songs-list empty-list">
+                                        No liked songs yet
+                                    </div>
+                                </div>
+                                
+                                <div class="recent-uploads">
+                                    <div class="songs-list empty-list">
+                                        No recent uploads yet
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <div class="music-player-container" style="display: none;">
+                                <div class="current-track-info">
+                                    <span class="track-title">No track selected</span>
+                                    <span class="track-artist">-</span>
+                                </div>
+                                <audio class="music-audio-player" preload="metadata"></audio>
+                                
+                                <div class="music-controls">
+                                    <button class="prev-track-btn">⏮️</button>
+                                    <button class="play-pause-btn">▶️</button>
+                                    <button class="next-track-btn">⏭️</button>
+                                    
+                                    <input type="range" class="volume-slider" min="0" max="100" value="50">
+                                    
+                                    <div class="track-progress-container">
+                                        <span class="current-time">0:00</span>
+                                        <input type="range" class="track-progress-slider" min="0" max="100" value="0">
+                                        <span class="total-time">0:00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // After creating the module, set up music functionality
+                    setTimeout(() => {
+                        const musicModule = new MusicModule(module);
+                    }, 0);
+                    break;case 'music':
                     moduleTitle = 'Music Library';
                     content = `
                         <div class="music-module-container">
@@ -381,27 +439,6 @@ class ModuleHandler {
                         const musicModule = new MusicModule(module);
                     }, 0);
                     break;
-            case 'ai':
-                moduleTitle = 'AI Chat';
-                content = `
-                    <div class="ai-chat-container">
-                        <div class="ai-messages"></div>
-                        <div class="ai-input-area">
-                            <input type="text" class="ai-message-input" placeholder="Ask me anything...">
-                            <button class="ai-send-btn">Send</button>
-                        </div>
-                    </div>
-                `;
-                
-                // After creating the module, set up the chat functionality
-                setTimeout(() => {
-                    if (typeof window.setupAIChat === 'function') {
-                        window.setupAIChat(module);
-                    } else {
-                        console.error('AI Chat setup function not found. Make sure aiChat.js is loaded.');
-                    }
-                }, 0);
-                break;
 // In moduleHandler.js, within the createModule method's switch statement
 case 'market':
     moduleTitle = 'Markets';
@@ -869,6 +906,7 @@ class MusicModule {
         this.moduleElement = moduleElement;
         this.likedSongs = [];
         this.recentUploads = [];
+        this.walletAddress = SessionManager.getWalletAddress();
         
         this.initializeElements();
         this.setupEventListeners();
@@ -922,18 +960,28 @@ class MusicModule {
 
     async fetchMusicData() {
         try {
+            if (!this.walletAddress) {
+                throw new Error('User not logged in');
+            }
+
             // Fetch recent uploads
-            const recentResponse = await fetch(`/api/tracks/recent`);
+            const recentResponse = await fetch('/api/tracks/recent');
+            if (!recentResponse.ok) {
+                throw new Error('Failed to fetch recent uploads');
+            }
             this.recentUploads = await recentResponse.json();
-    
-            // Fetch user's liked tracks
-            const likedResponse = await fetch(`/api/tracks/liked/${walletAddress}`);
+
+            // Fetch liked tracks
+            const likedResponse = await fetch(`/api/tracks/liked/${this.walletAddress}`);
+            if (!likedResponse.ok) {
+                throw new Error('Failed to fetch liked tracks');
+            }
             this.likedSongs = await likedResponse.json();
             
             this.renderSongLists();
         } catch (error) {
             console.error('Error fetching music data:', error);
-            this.showErrorMessage('Failed to load music library');
+            this.showErrorMessage(error.message || 'Failed to load music library');
         }
     }
 
@@ -941,13 +989,18 @@ class MusicModule {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('walletAddress', walletAddress);
+            formData.append('walletAddress', this.walletAddress);
             formData.append('title', file.name);
             
             const response = await fetch('/api/tracks/upload', {
                 method: 'POST',
                 body: formData
             });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Failed to upload music');
+            }
             
             const track = await response.json();
             
@@ -958,7 +1011,7 @@ class MusicModule {
             ErrorHandler.showSuccess('Music uploaded successfully!', this.moduleElement);
         } catch (error) {
             console.error('Music upload error:', error);
-            ErrorHandler.showError('Failed to upload music', this.moduleElement);
+            ErrorHandler.showError(`Upload failed: ${error.message}`, this.moduleElement);
         }
     }
 
@@ -978,14 +1031,14 @@ class MusicModule {
 
         songsList.classList.remove('empty-list');
         songsList.innerHTML = songs.map((song, index) => `
-            <div class="track-item" data-index="${index}" data-type="${type}">
+            <div class="track-item" data-index="${index}" data-type="${type}" data-track-id="${song.id}">
                 <div class="track-details">
-                    <span class="track-title">${song.title}</span>
+                    <span class="track-title">${song.title || 'Untitled Track'}</span>
                     <span class="track-artist">${song.artist || 'Unknown Artist'}</span>
                 </div>
                 <div class="track-actions">
                     <button class="play-track-btn">▶️</button>
-                    <button class="like-track-btn">❤️</button>
+                    <button class="like-track-btn ${song.liked ? 'liked' : ''}">❤️</button>
                 </div>
             </div>
         `).join('');
@@ -1010,38 +1063,50 @@ class MusicModule {
         this.playerContainer.style.display = 'block';
 
         // Update track info
-        this.trackTitle.textContent = song.title;
+        this.trackTitle.textContent = song.title || 'Untitled Track';
         this.trackArtist.textContent = song.artist || 'Unknown Artist';
 
         // Set audio source and play
         this.audioPlayer.src = song.url;
         this.audioPlayer.play();
+
+        // Record track play
+        fetch(`/api/tracks/${song.id}/play`, { method: 'POST' })
+            .catch(error => console.error('Error recording track play:', error));
     }
 
     toggleLike(trackItem) {
-        const type = trackItem.dataset.type;
-        const index = trackItem.dataset.index;
+        const trackId = trackItem.dataset.trackId;
         const likeBtn = trackItem.querySelector('.like-track-btn');
-        const songs = type === 'liked' ? this.likedSongs : this.recentUploads;
-        const track = songs[index];
-    
-        fetch(`/api/tracks/${track.id}/like`, {
+
+        fetch(`/api/tracks/${trackId}/like`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ walletAddress })
+            body: JSON.stringify({ walletAddress: this.walletAddress })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to toggle like');
+            }
+            return response.json();
+        })
         .then(updatedTrack => {
-            // Update local state based on server response
+            // Toggle like button style
             likeBtn.classList.toggle('liked');
-            this.renderSongLists();
+            
+            // Refresh lists to reflect changes
+            this.fetchMusicData();
         })
         .catch(error => {
             console.error('Error liking track:', error);
             ErrorHandler.showError('Failed to like track', this.moduleElement);
         });
+    }
+
+    showErrorMessage(message) {
+        ErrorHandler.showError(message, this.moduleElement);
     }
 }
 
