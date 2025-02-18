@@ -1566,8 +1566,28 @@ body {
 
 .music-search-container {
     display: flex;
-    gap: 0.5rem;
     align-items: center;
+    background-color: var(--bg-accent);
+    border-radius: 20px;
+    padding: 0.25rem 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.music-search-input {
+    flex-grow: 1;
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.music-search-input:focus {
+    outline: none;
+}
+
+.music-search-input::placeholder {
+    color: var(--text-secondary);
 }
 
 .music-view-selector {
@@ -1675,12 +1695,20 @@ body {
     background-color: #1877f2;
     color: white;
     border: none;
+    border-radius: 20px;
     padding: 0.5rem 1rem;
-    border-radius: 4px;
+    margin-left: 0.5rem;
+    font-size: 0.9rem;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .music-upload-btn:hover {
     background-color: #166fe5;
+}
+
+.music-search-container::before {
+    content: '🔍';
+    margin-right: 0.5rem;
+    opacity: 0.6;
 }

@@ -380,59 +380,59 @@ class ModuleHandler {
                     break;case 'music':
                     moduleTitle = 'Music Library';
                     content = `
-                        <div class="music-module-container">
-                            <div class="music-header">
-                                <h3>Music Library</h3>
-                                <div class="music-search-container">
-                                    <input type="text" class="music-search-input" placeholder="Search songs...">
-                                    <input type="file" class="music-upload-input" accept="audio/*" hidden>
-                                    <button class="music-upload-btn">Upload</button>
-                                </div>
-                                <div class="music-view-selector">
-                                    <button class="view-liked-btn active">Liked Songs</button>
-                                    <button class="view-recent-btn">Recent Uploads</button>
+                    <div class="music-module-container">
+                        <div class="music-header">
+                            <div class="music-search-container">
+                                <input type="text" class="music-search-input" placeholder="Search songs...">
+                            </div>
+                            <button class="music-upload-btn">
+                                <input type="file" class="music-upload-input" accept="audio/*" hidden>
+                                Upload Track
+                            </button>
+                            
+                            <div class="music-view-selector">
+                                <button class="view-liked-btn active">Liked Songs</button>
+                                <button class="view-recent-btn">Recent Uploads</button>
+                            </div>
+                        </div>
+                
+                        <div class="music-lists">
+                            <div class="liked-songs active">
+                                <div class="songs-list empty-list">
+                                    No liked songs yet
                                 </div>
                             </div>
-                
-                            <div class="music-lists">
-                                <div class="liked-songs active">
-                                    <h4>Liked Songs</h4>
-                                    <div class="songs-list empty-list">
-                                        No liked songs yet
-                                    </div>
-                                </div>
-                                
-                                <div class="recent-uploads">
-                                    <h4>Recent Uploads</h4>
-                                    <div class="songs-list empty-list">
-                                        No recent uploads yet
-                                    </div>
-                                </div>
-                            </div>
-                
-                            <div class="music-player-container" style="display: none;">
-                                <div class="current-track-info">
-                                    <span class="track-title">No track selected</span>
-                                    <span class="track-artist">-</span>
-                                </div>
-                                <audio class="music-audio-player" preload="metadata"></audio>
-                                
-                                <div class="music-controls">
-                                    <button class="prev-track-btn">⏮️</button>
-                                    <button class="play-pause-btn">▶️</button>
-                                    <button class="next-track-btn">⏭️</button>
-                                    
-                                    <input type="range" class="volume-slider" min="0" max="100" value="50">
-                                    
-                                    <div class="track-progress-container">
-                                        <span class="current-time">0:00</span>
-                                        <input type="range" class="track-progress-slider" min="0" max="100" value="0">
-                                        <span class="total-time">0:00</span>
-                                    </div>
+                            
+                            <div class="recent-uploads">
+                                <div class="songs-list empty-list">
+                                    No recent uploads yet
                                 </div>
                             </div>
                         </div>
-                    `;
+                
+                        <div class="music-player-container" style="display: none;">
+                            <div class="current-track-info">
+                                <span class="track-title">No track selected</span>
+                                <span class="track-artist">-</span>
+                            </div>
+                            <audio class="music-audio-player" preload="metadata"></audio>
+                            
+                            <div class="music-controls">
+                                <button class="prev-track-btn">⏮️</button>
+                                <button class="play-pause-btn">▶️</button>
+                                <button class="next-track-btn">⏭️</button>
+                                
+                                <input type="range" class="volume-slider" min="0" max="100" value="50">
+                                
+                                <div class="track-progress-container">
+                                    <span class="current-time">0:00</span>
+                                    <input type="range" class="track-progress-slider" min="0" max="100" value="0">
+                                    <span class="total-time">0:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
                     
                     // After creating the module, set up music functionality
                     setTimeout(() => {
@@ -928,8 +928,30 @@ class MusicModule {
         this.audioPlayer = this.moduleElement.querySelector('.music-audio-player');
         this.trackTitle = this.moduleElement.querySelector('.track-title');
         this.trackArtist = this.moduleElement.querySelector('.track-artist');
+        this.searchInput.addEventListener('input', (e) => this.searchTracks(e.target.value));
     }
 
+    searchTracks(query) {
+        if (!query) {
+            // Reset to show all tracks
+            this.renderSongLists();
+            return;
+        }
+    
+        // Filter both liked and recent uploads
+        const filterTracks = (tracks) => tracks.filter(track => 
+            track.title.toLowerCase().includes(query.toLowerCase()) || 
+            (track.artist && track.artist.toLowerCase().includes(query.toLowerCase()))
+        );
+    
+        const filteredLikedSongs = filterTracks(this.likedSongs);
+        const filteredRecentUploads = filterTracks(this.recentUploads);
+    
+        // Render filtered lists
+        this.renderSongList(this.likedSongsContainer, filteredLikedSongs, 'liked');
+        this.renderSongList(this.recentUploadsContainer, filteredRecentUploads, 'recent');
+    }
+    
     setupEventListeners() {
         // Upload button click to trigger file input
         this.uploadBtn.addEventListener('click', () => {
