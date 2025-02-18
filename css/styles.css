@@ -1670,3 +1670,17 @@ body {
     color: #ff4136;
     opacity: 1;
 }
+
+.music-upload-btn {
+    background-color: #1877f2;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.music-upload-btn:hover {
+    background-color: #166fe5;
+}
