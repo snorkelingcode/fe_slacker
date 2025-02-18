@@ -951,7 +951,7 @@ class MusicModule {
         this.renderSongList(this.likedSongsContainer, filteredLikedSongs, 'liked');
         this.renderSongList(this.recentUploadsContainer, filteredRecentUploads, 'recent');
     }
-    
+
     setupEventListeners() {
         // Upload button click to trigger file input
         this.uploadBtn.addEventListener('click', () => {
@@ -1007,35 +1007,49 @@ class MusicModule {
         }
     }
 
-    async uploadMusic(file) {
-        try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('walletAddress', this.walletAddress);
-            formData.append('title', file.name);
-            
-            const response = await fetch('/api/tracks/upload', {
-                method: 'POST',
-                body: formData
-            });
+async uploadMusic(file) {
+    // Validate file size
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+    if (file.size > MAX_FILE_SIZE) {
+        ErrorHandler.showError(`File too large. Maximum upload size is 100MB.`, this.moduleElement);
+        return;
+    }
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || 'Failed to upload music');
-            }
-            
-            const track = await response.json();
-            
-            // Add to recent uploads
-            this.recentUploads.unshift(track);
-            this.renderSongLists();
-            
-            ErrorHandler.showSuccess('Music uploaded successfully!', this.moduleElement);
-        } catch (error) {
-            console.error('Music upload error:', error);
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('walletAddress', this.walletAddress);
+        formData.append('title', file.name);
+        
+        const response = await fetch('/api/tracks/upload', {
+            method: 'POST',
+            body: formData,
+            // Optional: increase timeout
+            signal: AbortSignal.timeout(60000) // 60 seconds timeout
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to upload music');
+        }
+        
+        const track = await response.json();
+        
+        // Add to recent uploads
+        this.recentUploads.unshift(track);
+        this.renderSongLists();
+        
+        ErrorHandler.showSuccess('Music uploaded successfully!', this.moduleElement);
+    } catch (error) {
+        console.error('Music upload error:', error);
+        
+        if (error.name === 'AbortError') {
+            ErrorHandler.showError('Upload timed out. Please try again.', this.moduleElement);
+        } else {
             ErrorHandler.showError(`Upload failed: ${error.message}`, this.moduleElement);
         }
     }
+}
 
     renderSongLists() {
         this.renderSongList(this.likedSongsContainer, this.likedSongs, 'liked');
